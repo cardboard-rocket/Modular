@@ -1,0 +1,11 @@
+Model Information:
+* title:	Porco Plane
+* source:	https://sketchfab.com/3d-models/porco-plane-a144904d325a4e8493089ef9ac7d0999
+* author:	Lucas Rollano (https://sketchfab.com/nightdoll)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Porco Plane" (https://sketchfab.com/3d-models/porco-plane-a144904d325a4e8493089ef9ac7d0999) by Lucas Rollano (https://sketchfab.com/nightdoll) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
