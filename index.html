@@ -164,7 +164,9 @@ console.error = function(...args) {
       <button id="fullscreen-toggle">⛶ Fullscreen</button>
     </div>
   </div>
-  <canvas id="minimap-canvas" width="160" height="160" style="position: fixed; top: 16px; right: 16px; border: 1px solid rgba(255, 255, 255, 0.2); background: rgba(0,0,0,0.5); z-index: 9999; display: block;"></canvas>
+  <div id="minimap-container" style="position: fixed; right: 10px; bottom: 10px; width: 180px; height: 180px; border: 1px solid rgba(255, 255, 255, 0.15); background: rgba(20, 20, 20, 0.85); z-index: 9999; resize: both; overflow: hidden; display: block; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);">
+    <canvas id="minimap-canvas" style="width: 100%; height: 100%; display: block;"></canvas>
+  </div>
   <div id="fps-counter" style="position: fixed; top: 16px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.5); color: #fff; padding: 4px 8px; border-radius: 4px; font-family: monospace; font-size: 12px; z-index: 10; pointer-events: none;">0 FPS</div>
 
   <div id="touch-controls">
@@ -351,7 +353,11 @@ console.error = function(...args) {
             uAzureShadow: { value: new THREE.Color(0xedfafc) },
             uSaturation: { value: 1.18 },
             uShimmerCol: { value: new THREE.Color(0.12, 0.09, 0.02) },
-            uVignette: { value: 0.14 }
+            uVignette: { value: 0.14 },
+            uOutlineEnabled: { value: 1.0 },
+            uOutlineThickness: { value: 1.5 },
+            uOutlineColor: { value: new THREE.Color(0x000000) },
+            uResolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) }
         },
         vertexShader: `
             varying vec2 vUv;
@@ -367,11 +373,39 @@ console.error = function(...args) {
             uniform float uSaturation;
             uniform vec3 uShimmerCol;
             uniform float uVignette;
+            uniform float uOutlineEnabled;
+            uniform float uOutlineThickness;
+            uniform vec3 uOutlineColor;
+            uniform vec2 uResolution;
             varying vec2 vUv;
 
             void main() {
                 vec4 texel = texture2D( tDiffuse, vUv );
                 vec3 col = texel.rgb;
+
+                if (uOutlineEnabled > 0.5) {
+                    float dx = uOutlineThickness / uResolution.x;
+                    float dy = uOutlineThickness / uResolution.y;
+                    
+                    float l00 = dot(texture2D(tDiffuse, vUv + vec2(-dx, -dy)).rgb, vec3(0.299, 0.587, 0.114));
+                    float l10 = dot(texture2D(tDiffuse, vUv + vec2(0.0, -dy)).rgb, vec3(0.299, 0.587, 0.114));
+                    float l20 = dot(texture2D(tDiffuse, vUv + vec2(dx, -dy)).rgb, vec3(0.299, 0.587, 0.114));
+                    
+                    float l01 = dot(texture2D(tDiffuse, vUv + vec2(-dx, 0.0)).rgb, vec3(0.299, 0.587, 0.114));
+                    float l21 = dot(texture2D(tDiffuse, vUv + vec2(dx, 0.0)).rgb, vec3(0.299, 0.587, 0.114));
+                    
+                    float l02 = dot(texture2D(tDiffuse, vUv + vec2(-dx, dy)).rgb, vec3(0.299, 0.587, 0.114));
+                    float l12 = dot(texture2D(tDiffuse, vUv + vec2(0.0, dy)).rgb, vec3(0.299, 0.587, 0.114));
+                    float l22 = dot(texture2D(tDiffuse, vUv + vec2(dx, dy)).rgb, vec3(0.299, 0.587, 0.114));
+                    
+                    float sobX = l00 + 2.0 * l01 + l02 - (l20 + 2.0 * l21 + l22);
+                    float sobY = l00 + 2.0 * l10 + l20 - (l02 + 2.0 * l12 + l22);
+                    float edge = sqrt(sobX * sobX + sobY * sobY);
+                    
+                    if (edge > 0.15) {
+                        col = mix(col, uOutlineColor, clamp(edge * 2.5, 0.0, 1.0));
+                    }
+                }
 
                 float lum = dot(col, vec3(0.299, 0.587, 0.114));
 
@@ -501,18 +535,98 @@ console.error = function(...args) {
     gradientMap.magFilter = THREE.NearestFilter;
     gradientMap.generateMipmaps = false;
 
+    const terrainToonUniforms = {
+        uToonEnabled: { value: 1.0 },
+        uToonSteps: { value: 3.0 },
+        uRimStrength: { value: 0.35 },
+        uRimColor: { value: new THREE.Color(0xffffff) }
+    };
+    
+    const treeToonUniforms = {
+        uToonEnabled: { value: 1.0 },
+        uToonSteps: { value: 3.0 },
+        uRimStrength: { value: 0.35 },
+        uRimColor: { value: new THREE.Color(0xffffff) }
+    };
+
+    const waterToonUniforms = {
+        uToonEnabled: { value: 1.0 },
+        uToonSteps: { value: 3.0 },
+        uRimStrength: { value: 0.35 },
+        uRimColor: { value: new THREE.Color(0xffffff) }
+    };
+
+    const customColors = {
+        enabled: 0.0,
+        grass: new THREE.Color(0x389c45),
+        dirt: new THREE.Color(0xdcb58a),
+        sand: new THREE.Color(0xf2e1b8),
+        noiseScale: 1.0,
+        heightMultiplier: 1.0
+    };
+
+    const terrainColorUniforms = {
+        uCustomColorsEnabled: { value: 0.0 },
+        uGrassColor: { value: customColors.grass },
+        uDirtColor: { value: customColors.dirt },
+        uSandColor: { value: customColors.sand }
+    };
+
+    function makeMaterialToon(material, toonUniforms) {
+        const originalOnBeforeCompile = material.onBeforeCompile;
+        material.onBeforeCompile = (shader) => {
+            if (originalOnBeforeCompile) originalOnBeforeCompile(shader);
+            
+            shader.uniforms.uToonEnabled = toonUniforms.uToonEnabled;
+            shader.uniforms.uToonSteps = toonUniforms.uToonSteps;
+            shader.uniforms.uRimStrength = toonUniforms.uRimStrength;
+            shader.uniforms.uRimColor = toonUniforms.uRimColor;
+
+            if (shader.fragmentShader.includes('getGradientShading')) {
+                shader.fragmentShader = shader.fragmentShader.replace(
+                    'float getGradientShading( float dotNL ) {',
+                    `uniform float uToonEnabled;
+                     uniform float uToonSteps;
+                     float getGradientShading( float dotNL ) {
+                         if (uToonEnabled > 0.5) {
+                             float steps = max(1.0, uToonSteps);
+                             return clamp(ceil(dotNL * steps) / steps, 0.05, 1.0);
+                         }
+                    `
+                );
+            }
+
+            shader.fragmentShader = shader.fragmentShader.replace(
+                '#include <tonemapping_fragment>',
+                `#include <tonemapping_fragment>
+                 if (uToonEnabled > 0.5) {
+                     vec3 normalVec = normalize(vNormal);
+                     vec3 viewVec = normalize(vViewPosition);
+                     float rim = 1.0 - clamp(dot(normalVec, viewVec), 0.0, 1.0);
+                     rim = pow(rim, 4.0);
+                     gl_FragColor.rgb += uRimColor * rim * uRimStrength;
+                 }
+                `
+            );
+        };
+    }
+
     const matRock = new THREE.MeshToonMaterial({ color: 0xffffff, gradientMap, dithering: true });
     const matBush = new THREE.MeshToonMaterial({ color: 0x48a868, gradientMap, dithering: true });
     const matCloud = new THREE.MeshToonMaterial({ color: 0xfffaec, transparent: true, opacity: 0.65, gradientMap, dithering: true });
     const matWispyCloud = new THREE.MeshToonMaterial({ color: 0xffffff, transparent: true, opacity: 0.42, gradientMap, dithering: true });
-    const matFlower = new THREE.MeshToonMaterial({ color: 0xffffff, gradientMap, dithering: true }); 
+    
+    makeMaterialToon(matRock, treeToonUniforms);
+    makeMaterialToon(matBush, treeToonUniforms);
+    makeMaterialToon(matCloud, treeToonUniforms);
+    makeMaterialToon(matWispyCloud, treeToonUniforms);
+
     const terrainMat = new THREE.MeshToonMaterial({ 
         vertexColors: true, 
         gradientMap,
         dithering: true
     });
     
-    // Shader injection for perfect pixel-smooth shorelines
     terrainMat.onBeforeCompile = (shader) => {
         shader.vertexShader = `
             varying vec3 vWorldPos;
@@ -522,9 +636,67 @@ console.error = function(...args) {
             `#include <worldpos_vertex>
              vWorldPos = (modelMatrix * vec4(transformed, 1.0)).xyz;`
         );
+
+        shader.uniforms.uToonEnabled = terrainToonUniforms.uToonEnabled;
+        shader.uniforms.uToonSteps = terrainToonUniforms.uToonSteps;
+        shader.uniforms.uRimStrength = terrainToonUniforms.uRimStrength;
+        shader.uniforms.uRimColor = terrainToonUniforms.uRimColor;
+
+        shader.uniforms.uCustomColorsEnabled = terrainColorUniforms.uCustomColorsEnabled;
+        shader.uniforms.uGrassColor = terrainColorUniforms.uGrassColor;
+        shader.uniforms.uDirtColor = terrainColorUniforms.uDirtColor;
+        shader.uniforms.uSandColor = terrainColorUniforms.uSandColor;
+
+        if (shader.fragmentShader.includes('getGradientShading')) {
+            shader.fragmentShader = shader.fragmentShader.replace(
+                'float getGradientShading( float dotNL ) {',
+                `uniform float uToonEnabled;
+                 uniform float uToonSteps;
+                 float getGradientShading( float dotNL ) {
+                     if (uToonEnabled > 0.5) {
+                         float steps = max(1.0, uToonSteps);
+                         return clamp(ceil(dotNL * steps) / steps, 0.05, 1.0);
+                     }
+                `
+            );
+        }
+
+        shader.fragmentShader = `
+            uniform float uCustomColorsEnabled;
+            uniform vec3 uGrassColor;
+            uniform vec3 uDirtColor;
+            uniform vec3 uSandColor;
+        ` + shader.fragmentShader;
+
+        shader.fragmentShader = shader.fragmentShader.replace(
+            `#include <color_fragment>`,
+            `#include <color_fragment>
+             if (uCustomColorsEnabled > 0.5) {
+                 float isGrass = step(0.1, diffuseColor.g - max(diffuseColor.r, diffuseColor.b));
+                 float isSand = step(0.7, diffuseColor.r) * step(0.6, diffuseColor.g) * step(0.4, diffuseColor.r - diffuseColor.b);
+                 float isDirt = 1.0 - clamp(isGrass + isSand, 0.0, 1.0);
+                 
+                 diffuseColor.rgb = uGrassColor * isGrass + uSandColor * isSand + uDirtColor * isDirt;
+             }
+            `
+        );
+
+        shader.fragmentShader = shader.fragmentShader.replace(
+            '#include <tonemapping_fragment>',
+            `#include <tonemapping_fragment>
+             if (uToonEnabled > 0.5) {
+                 vec3 normalVec = normalize(vNormal);
+                 vec3 viewVec = normalize(vViewPosition);
+                 float rim = 1.0 - clamp(dot(normalVec, viewVec), 0.0, 1.0);
+                 rim = pow(rim, 4.0);
+                 gl_FragColor.rgb += uRimColor * rim * uRimStrength;
+             }
+            `
+        );
     };
 
     const matTree = new THREE.MeshToonMaterial({ vertexColors: true, gradientMap, dithering: true });
+    makeMaterialToon(matTree, treeToonUniforms);
 
 
 
@@ -611,16 +783,21 @@ console.error = function(...args) {
         let lowerZone = Math.floor(zone);
         let upperZone = Math.ceil(zone);
 
+        const ns = customColors.noiseScale;
+        const scaledX = x * ns;
+        const scaledZ = z * ns;
+
         let baseH = 0;
         if (lowerZone === upperZone) {
-            baseH = biomes[lowerZone].getHeight(x, z, snoise, zone);
+            baseH = biomes[lowerZone].getHeight(scaledX, scaledZ, snoise, zone);
         } else {
             let t = zone - lowerZone;
             t = t * t * (3.0 - 2.0 * t); // smoothstep
-            let h1 = biomes[lowerZone].getHeight(x, z, snoise, zone);
-            let h2 = biomes[upperZone].getHeight(x, z, snoise, zone);
+            let h1 = biomes[lowerZone].getHeight(scaledX, scaledZ, snoise, zone);
+            let h2 = biomes[upperZone].getHeight(scaledX, scaledZ, snoise, zone);
             baseH = h1 * (1.0 - t) + h2 * t;
         }
+        baseH = baseH * customColors.heightMultiplier;
         return baseH - getCarveValue(x, z);
     }
 
@@ -739,7 +916,7 @@ console.error = function(...args) {
     const ROCK_COUNT = isMobile ? 60 : 180;
     const BUSH_COUNT = isMobile ? 180 : 540;
         const CLOUD_COUNT = 50;
-    const FLOWER_COUNT = isMobile ? 2500 : 12500; // Reduced 50% for FPS
+
     const TREE_MULT = isMobile ? 0.3 : 1.0;
     
     function removeBottomFaces(geometry) {
@@ -1047,12 +1224,7 @@ console.error = function(...args) {
     const geoRock = new THREE.DodecahedronGeometry(2.5, 0); // 36-triangle low poly boulders
     
     const geoBush = new THREE.IcosahedronGeometry(2, 0);
-    const geoFlowerStem = new THREE.CylinderGeometry(0.05, 0.05, 0.4, 3);
-    geoFlowerStem.translate(0, 0.2, 0);
-    const geoFlowerHead = new THREE.OctahedronGeometry(0.35, 0); // Ultra low poly 8-triangle gem head
-    geoFlowerHead.translate(0, 0.5, 0);
-    geoFlowerHead.scale(1, 0.5, 1);
-    const geoFlower = BufferGeometryUtils.mergeGeometries([geoFlowerStem.toNonIndexed(), geoFlowerHead.toNonIndexed()]);
+
 
     const b3 = new THREE.ConeGeometry(0.15, 0.6, 3);
     b3.translate(0, 0.3, 0);
@@ -1366,21 +1538,13 @@ console.error = function(...args) {
 
     const instRocks = new THREE.InstancedMesh(geoRock, matRock, ROCK_COUNT);
     const instBushes = new THREE.InstancedMesh(geoBush, matBush, BUSH_COUNT);
-        const instClouds = new THREE.InstancedMesh(geoCloud, matCloud, CLOUD_COUNT);
-    const instFlowers = new THREE.InstancedMesh(geoFlower, matFlower, FLOWER_COUNT);
+    const instClouds = new THREE.InstancedMesh(geoCloud, matCloud, CLOUD_COUNT);
 
     const rockColors = [0xe5d4ba, 0xcbb192, 0xd8c8b8, 0x8a7b69, 0xd2c0a3];
     const tempRockColor = new THREE.Color();
     for (let i = 0; i < ROCK_COUNT; i++) {
         tempRockColor.setHex(rockColors[Math.floor(Math.random() * rockColors.length)]);
         instRocks.setColorAt(i, tempRockColor);
-    }
-
-    const flowerColors = [0xffffff, 0xffd700, 0xffa8d1, 0x4da9e8, 0xff6b6b]; // white, yellow, pink, blue, red
-    const tempFlowerColor = new THREE.Color();
-    for (let i = 0; i < FLOWER_COUNT; i++) {
-        tempFlowerColor.setHex(flowerColors[Math.floor(Math.random() * flowerColors.length)]);
-        instFlowers.setColorAt(i, tempFlowerColor);
     }
     
     // Water Mesh
@@ -1408,6 +1572,10 @@ console.error = function(...args) {
     waterMat.onBeforeCompile = (shader) => {
         shader.uniforms.uTime = waterUniforms.uTime;
         shader.uniforms.uForcedZone = waterUniforms.uForcedZone;
+        shader.uniforms.uToonEnabled = waterToonUniforms.uToonEnabled;
+        shader.uniforms.uToonSteps = waterToonUniforms.uToonSteps;
+        shader.uniforms.uRimStrength = waterToonUniforms.uRimStrength;
+        shader.uniforms.uRimColor = waterToonUniforms.uRimColor;
         
         shader.vertexShader = `
             varying vec3 vWorldPos;
@@ -1422,6 +1590,10 @@ console.error = function(...args) {
         shader.fragmentShader = `
             uniform float uTime;
             uniform float uForcedZone;
+            uniform float uToonEnabled;
+            uniform float uToonSteps;
+            uniform float uRimStrength;
+            uniform vec3 uRimColor;
             varying vec3 vWorldPos;
 
             // --- Simplex noise (compact GLSL) ---
@@ -1597,6 +1769,21 @@ console.error = function(...args) {
 
              // Apply base painted water + crisp white foam lines
              diffuseColor.rgb = mix(waterGrad, vec3(0.98, 0.99, 1.0), totalFoam);
+
+             // Custom Toon / Cel quantization for water
+             if (uToonEnabled > 0.5) {
+                 float steps = max(1.0, uToonSteps);
+                 float l = dot(diffuseColor.rgb, vec3(0.299, 0.587, 0.114));
+                 float ql = ceil(l * steps) / steps;
+                 diffuseColor.rgb = diffuseColor.rgb * (ql / max(0.01, l));
+                 
+                 // Apply water rim light
+                 vec3 normalVec = normalize(vNormal);
+                 vec3 viewVec = normalize(vViewPosition);
+                 float rim = 1.0 - clamp(dot(normalVec, viewVec), 0.0, 1.0);
+                 rim = pow(rim, 4.0);
+                 diffuseColor.rgb += uRimColor * rim * uRimStrength;
+             }
             `
         );
     };
@@ -1619,7 +1806,7 @@ console.error = function(...args) {
         mesh.frustumCulled = false; 
         scene.add(mesh);
     });
-    [instRocks, instBushes, instFlowers].forEach(mesh => {
+    [instRocks, instBushes].forEach(mesh => {
         mesh.castShadow = false;
         mesh.receiveShadow = true;
         mesh.frustumCulled = false; 
@@ -1675,9 +1862,7 @@ console.error = function(...args) {
     instWispyClouds.instanceMatrix.needsUpdate = true;
     instMegaClouds.instanceMatrix.needsUpdate = true;
     
-    instFlowers.receiveShadow = false;
-    instFlowers.castShadow = false;
-    scene.add(instFlowers);
+
     
     // High-Altitude Distant Clouds (Removed to fix glitchy sky blobs)
     
@@ -1754,7 +1939,7 @@ console.error = function(...args) {
     // Initialize all to hidden
     const dummyMatrix = new THREE.Matrix4();
     dummyMatrix.setPosition(0, -1000, 0);
-    [...treeMeshes, instRocks, instBushes, instClouds, instFlowers].forEach(mesh => {
+    [...treeMeshes, instRocks, instBushes, instClouds].forEach(mesh => {
         for(let i=0; i<mesh.count; i++) {
             mesh.setMatrixAt(i, dummyMatrix);
         }
@@ -2224,42 +2409,8 @@ console.error = function(...args) {
             }
         }
 
-        // Flowers
-        let flowersUpdated = false;
-        for (let i = currentFrame % 10; i < FLOWER_COUNT; i += 10) {
-            instFlowers.getMatrixAt(i, dummy.matrix);
-            dummy.position.setFromMatrixPosition(dummy.matrix);
-            
-            if (Math.abs(dummy.position.x - playerX) > dist || Math.abs(dummy.position.z - playerZ) > dist || dummy.position.y < -500) {
-                const nx = playerX + (Math.random() - 0.5) * dist * 2.0;
-                const nz = playerZ + (Math.random() - 0.5) * dist * 2.0;
-                const h = terrainHeightJS(nx, nz);
-                
-                let isClearing = snoise(nx * 0.003, nz * 0.003 + 50) > 0.2;
-                let validFlower = isClearing ? (Math.random() < 0.8) : (Math.random() < 0.05);
-
-                if (validFlower && h > 5.5 && getPathStrength(nx, nz) < 0.1) {
-                    dummy.position.set(nx, h, nz);
-                    dummy.rotation.set(0, Math.random() * Math.PI, 0);
-                    dummy.scale.set(1, 1, 1);
-                    let cNoise = snoise(nx * 0.005, nz * 0.005);
-                    let cIdx = Math.floor(((cNoise + 1.0) / 2.0) * flowerColors.length);
-                    tempFlowerColor.setHex(flowerColors[Math.min(flowerColors.length - 1, Math.max(0, cIdx))]);
-                    instFlowers.setColorAt(i, tempFlowerColor);
-                } else {
-                    // Sleep under the ground inside the range
-                    dummy.position.set(playerX + (Math.random() - 0.5) * dist, -200.0, playerZ + (Math.random() - 0.5) * dist);
-                    dummy.scale.set(0, 0, 0);
-                }
-                dummy.updateMatrix();
-                instFlowers.setMatrixAt(i, dummy.matrix);
-                flowersUpdated = true;
-            }
-        }
-            
         if (rocksUpdated) instRocks.instanceMatrix.needsUpdate = true;
         if (bushesUpdated) instBushes.instanceMatrix.needsUpdate = true;
-        if (flowersUpdated) { instFlowers.instanceMatrix.needsUpdate = true; instFlowers.instanceColor.needsUpdate = true; }
     } // End of shouldUpdateTerrain block
 
         // Animals
@@ -2359,6 +2510,9 @@ console.error = function(...args) {
                 if (child.isMesh) {
                     child.castShadow = true;
                     child.receiveShadow = true;
+                    if (child.material) {
+                        makeMaterialToon(child.material, treeToonUniforms);
+                    }
                 }
             });
             kikiModel.rotation.y = Math.PI;
@@ -2573,7 +2727,7 @@ console.error = function(...args) {
 
         if(e.key.toLowerCase() === 'm') {
             isMinimapVisible = !isMinimapVisible;
-            const minimapEl = document.getElementById('minimap-canvas');
+            const minimapEl = document.getElementById('minimap-container');
             if (minimapEl) {
                 minimapEl.style.display = isMinimapVisible ? 'block' : 'none';
             }
@@ -2862,10 +3016,53 @@ console.error = function(...args) {
                 }
             }
 
+    function resnapTrees(hitPoint, radius) {
+        const waterTable = 2.4;
+        treeMeshes.forEach((instMesh) => {
+            const count = instMesh.maxCount || instMesh.count;
+            let meshChanged = false;
+            for (let i = 0; i < count; i++) {
+                instMesh.getMatrixAt(i, dummy.matrix);
+                dummy.position.setFromMatrixPosition(dummy.matrix);
+                
+                const dx = dummy.position.x - hitPoint.x;
+                const dz = dummy.position.z - hitPoint.z;
+                if (dx*dx + dz*dz <= radius*radius) {
+                    const newH = terrainHeightJS(dummy.position.x, dummy.position.z);
+                    if (newH < waterTable) {
+                        dummy.scale.setScalar(0.0);
+                        dummy.position.y = -9999.0;
+                        const cellKey = getTreeCell(dummy.position.x, dummy.position.z);
+                        treeGrid.delete(cellKey);
+                    } else {
+                        const scale = new THREE.Vector3();
+                        const quat = new THREE.Quaternion();
+                        const origPos = new THREE.Vector3();
+                        dummy.matrix.decompose(origPos, quat, scale);
+                        
+                        dummy.position.y = newH - 1.5;
+                        dummy.scale.copy(scale);
+                        dummy.quaternion.copy(quat);
+                    }
+                    dummy.updateMatrix();
+                    instMesh.setMatrixAt(i, dummy.matrix);
+                    meshChanged = true;
+                }
+            }
+            if (meshChanged) {
+                instMesh.instanceMatrix.needsUpdate = true;
+            }
+        });
+    }
+
             if (gridChanged) {
                 const centerX = isEditorMode ? cameraBase.position.x : playerGrp.position.x;
                 const centerZ = isEditorMode ? cameraBase.position.z : playerGrp.position.z;
                 updateTerrainGeometry(centerX, centerZ);
+                if (brushMode === 'water') {
+                    resnapTrees(hitPoint, radius);
+                }
+                needsMinimapUpdate = true;
             }
         }
     }
@@ -3339,82 +3536,126 @@ console.error = function(...args) {
         updateMinimap();
     }
 
-    let lastMinimapUpdateTime = 0;
+    let needsMinimapUpdate = true;
+    let offscreenMinimapCanvas = null;
+    let offscreenMinimapCtx = null;
+    let lastPlayerGridX = null;
+    let lastPlayerGridZ = null;
+    let minimapZoom = 1.0;
+
     const minimapCanvas = document.getElementById('minimap-canvas');
     const minimapCtx = minimapCanvas ? minimapCanvas.getContext('2d') : null;
     
     function updateMinimap() {
         if (!isMinimapVisible || !minimapCanvas || !minimapCtx) return;
         
-        const now = performance.now();
-        if (now - lastMinimapUpdateTime < 150) return; // Limit to ~6 FPS
-        lastMinimapUpdateTime = now;
-        
-        const centerX = isEditorMode ? cameraBase.position.x : playerGrp.position.x;
-        const centerZ = isEditorMode ? cameraBase.position.z : playerGrp.position.z;
-        
-        const width = minimapCanvas.width;
-        const height = minimapCanvas.height;
-        const imgData = minimapCtx.createImageData(width, height);
-        
-        const scale = 8.0;
-        
-        for (let py = 0; py < height; py++) {
-            for (let px = 0; px < width; px++) {
-                const worldX = centerX + (px - width / 2) * scale;
-                const worldZ = centerZ + (py - height / 2) * scale;
-                
-                const h = terrainHeightJS(worldX, worldZ);
-                const zone = getZone(worldX, worldZ);
-                
-                let r = 0, g = 0, b = 0;
-                
-                if (h < 2.35) {
-                    r = 30; g = 100; b = 200;
-                } else {
-                    if (zone < 1.0) {
-                        r = 40; g = 130; b = 60;
-                    } else if (zone < 2.0) {
-                        r = 100; g = 180; b = 120;
-                    } else if (zone < 3.0) {
-                        r = 120; g = 210; b = 70;
-                    } else if (zone < 4.0) {
-                        r = 215; g = 185; b = 110;
-                    } else if (zone < 5.0) {
-                        if (h > 65.0) {
-                            r = 240; g = 240; b = 245;
-                        } else {
-                            r = 100; g = 110; b = 120;
-                        }
-                    } else {
-                        r = 150; g = 60; b = 180;
-                    }
-                }
-                
-                const idx = (px + py * width) * 4;
-                imgData.data[idx] = r;
-                imgData.data[idx+1] = g;
-                imgData.data[idx+2] = b;
-                imgData.data[idx+3] = 255;
+        const container = document.getElementById('minimap-container');
+        if (container) {
+            const containerWidth = Math.max(80, container.clientWidth);
+            const containerHeight = Math.max(80, container.clientHeight);
+            if (minimapCanvas.width !== containerWidth || minimapCanvas.height !== containerHeight) {
+                minimapCanvas.width = containerWidth;
+                minimapCanvas.height = containerHeight;
+                needsMinimapUpdate = true;
             }
         }
         
-        minimapCtx.putImageData(imgData, 0, 0);
+        const centerX = isEditorMode ? cameraBase.position.x : playerGrp.position.x;
+        const centerZ = isEditorMode ? cameraBase.position.z : playerGrp.position.z;
+        const gridX = Math.floor(centerX / 300.0);
+        const gridZ = Math.floor(centerZ / 300.0);
         
+        if (gridX !== lastPlayerGridX || gridZ !== lastPlayerGridZ) {
+            needsMinimapUpdate = true;
+            lastPlayerGridX = gridX;
+            lastPlayerGridZ = gridZ;
+        }
+
+        const width = minimapCanvas.width;
+        const height = minimapCanvas.height;
+
+        if (!offscreenMinimapCanvas) {
+            offscreenMinimapCanvas = document.createElement('canvas');
+        }
+        if (offscreenMinimapCanvas.width !== width || offscreenMinimapCanvas.height !== height) {
+            offscreenMinimapCanvas.width = width;
+            offscreenMinimapCanvas.height = height;
+            needsMinimapUpdate = true;
+        }
+
+        if (needsMinimapUpdate) {
+            needsMinimapUpdate = false;
+            if (!offscreenMinimapCtx) {
+                offscreenMinimapCtx = offscreenMinimapCanvas.getContext('2d');
+            }
+            
+            const imgData = offscreenMinimapCtx.createImageData(width, height);
+            const step = 4;
+            const scale = 12.0 * minimapZoom;
+            
+            for (let py = 0; py < height; py += step) {
+                for (let px = 0; px < width; px += step) {
+                    const worldX = centerX + (px - width / 2) * scale;
+                    const worldZ = centerZ + (py - height / 2) * scale;
+                    
+                    const h = terrainHeightJS(worldX, worldZ);
+                    const zone = getZone(worldX, worldZ);
+                    
+                    let r = 0, g = 0, b = 0;
+                    
+                    if (h < 2.35) {
+                        r = 30; g = 100; b = 200;
+                    } else {
+                        if (zone < 1.0) {
+                            r = 40; g = 130; b = 60;
+                        } else if (zone < 2.0) {
+                            r = 100; g = 180; b = 120;
+                        } else if (zone < 3.0) {
+                            r = 120; g = 210; b = 70;
+                        } else if (zone < 4.0) {
+                            r = 215; g = 185; b = 110;
+                        } else if (zone < 5.0) {
+                            if (h > 65.0) {
+                                r = 240; g = 240; b = 245;
+                            } else {
+                                r = 100; g = 110; b = 120;
+                            }
+                        } else {
+                            r = 150; g = 60; b = 180;
+                        }
+                    }
+                    
+                    for (let dy = 0; dy < step && (py + dy) < height; dy++) {
+                        for (let dx = 0; dx < step && (px + dx) < width; dx++) {
+                            const idx = ((px + dx) + (py + dy) * width) * 4;
+                            imgData.data[idx] = r;
+                            imgData.data[idx+1] = g;
+                            imgData.data[idx+2] = b;
+                            imgData.data[idx+3] = 255;
+                        }
+                    }
+                }
+            }
+            offscreenMinimapCtx.putImageData(imgData, 0, 0);
+        }
+
+        minimapCtx.clearRect(0, 0, width, height);
+        minimapCtx.drawImage(offscreenMinimapCanvas, 0, 0);
+
         const cx = width / 2;
         const cy = height / 2;
         const facingAngle = isEditorMode ? cameraPivot.rotation.y : currentYaw;
         
         minimapCtx.fillStyle = '#ff3b30';
         minimapCtx.beginPath();
-        minimapCtx.arc(cx, cy, 4, 0, Math.PI * 2);
+        minimapCtx.arc(cx, cy, 5, 0, Math.PI * 2);
         minimapCtx.fill();
         
         minimapCtx.strokeStyle = '#ffffff';
-        minimapCtx.lineWidth = 2;
+        minimapCtx.lineWidth = 2.5;
         minimapCtx.beginPath();
         minimapCtx.moveTo(cx, cy);
-        minimapCtx.lineTo(cx - Math.sin(facingAngle) * 12, cy - Math.cos(facingAngle) * 12);
+        minimapCtx.lineTo(cx - Math.sin(facingAngle) * 14, cy - Math.cos(facingAngle) * 14);
         minimapCtx.stroke();
     }
 
@@ -3423,6 +3664,9 @@ console.error = function(...args) {
         camera.updateProjectionMatrix();
         renderer.setSize(window.innerWidth, window.innerHeight);
         composer.setSize(window.innerWidth, window.innerHeight);
+        if (summerPass && summerPass.uniforms && summerPass.uniforms.uResolution) {
+            summerPass.uniforms.uResolution.value.set(window.innerWidth, window.innerHeight);
+        }
     });
 
     let timePhase = 0; // 0: Day, 1: Dusk, 2: Deep Twilight
@@ -3491,7 +3735,24 @@ console.error = function(...args) {
             updateTerrainGeometry(centerX, centerZ);
         },
         getFlySpeedMultiplier: () => editorFlySpeedMultiplier,
-        setFlySpeedMultiplier: (mult) => { editorFlySpeedMultiplier = mult; }
+        setFlySpeedMultiplier: (mult) => { editorFlySpeedMultiplier = mult; },
+        
+        terrainToonUniforms: terrainToonUniforms,
+        treeToonUniforms: treeToonUniforms,
+        waterToonUniforms: waterToonUniforms,
+        customColors: customColors,
+        terrainColorUniforms: terrainColorUniforms,
+        summerPass: summerPass,
+        rebuildTerrain: () => {
+            const centerX = isEditorMode ? cameraBase.position.x : playerGrp.position.x;
+            const centerZ = isEditorMode ? cameraBase.position.z : playerGrp.position.z;
+            updateTerrainGeometry(centerX, centerZ);
+        },
+        triggerMinimapUpdate: () => {
+            needsMinimapUpdate = true;
+        },
+        getMinimapZoom: () => minimapZoom,
+        setMinimapZoom: (zoom) => { minimapZoom = zoom; }
     });
 
 
