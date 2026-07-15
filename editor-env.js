@@ -1,3 +1,7 @@
+/**
+ * editor-env.js - Developer Environmental & Post-Processing Controller
+ * Contains Raycast Splat Painter, atmosphere/fog fine-tuning, cloud variables, and bloom controllers.
+ */
 import * as THREE from 'three';
 
 export function initEditor(options) {
