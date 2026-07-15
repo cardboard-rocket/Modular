@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fluffy Grass Editor V2</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background-color: #1a1a1a;
+      font-family: 'Courier New', Courier, monospace;
+      color: #e0e0e0;
+      user-select: none;
+    }
+    #canvas-container {
+      width: 100vw;
+      height: 100vh;
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 1;
+    }
+    #sidebar {
+      position: absolute;
+      right: 0;
+      top: 0;
+      width: 320px;
+      height: 100vh;
+      background-color: #121212;
+      border-left: 1px solid #333333;
+      z-index: 10;
+      box-sizing: border-box;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      overflow-y: auto;
+    }
+    h2 {
+      margin-top: 0;
+      font-size: 15px;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      border-bottom: 1px solid #333;
+      padding-bottom: 12px;
+      color: #ffffff;
+    }
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    label {
+      font-size: 10px;
+      text-transform: uppercase;
+      color: #888888;
+      letter-spacing: 1px;
+    }
+    input[type="color"], input[type="range"], select, button {
+      background-color: #1c1c1c;
+      color: #ffffff;
+      border: 1px solid #444444;
+      padding: 8px;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 12px;
+      outline: none;
+      cursor: pointer;
+      border-radius: 0px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    input[type="range"] {
+      padding: 0;
+    }
+    button {
+      text-align: center;
+      font-weight: bold;
+      transition: background-color 0.2s, border-color 0.2s;
+      margin-top: 10px;
+    }
+    button:hover {
+      background-color: #282828;
+      border-color: #666666;
+    }
+    button.active {
+      background-color: #00ffaa;
+      color: #121212;
+      border-color: #00ffaa;
+    }
+    .val-display {
+      font-size: 10px;
+      color: #00ffaa;
+      text-align: right;
+    }
+    #stats-box {
+      font-size: 10px;
+      color: #666666;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      background: #0d0d0d;
+      padding: 8px;
+      border: 1px solid #222222;
+      margin-top: 20px;
+    }
+  </style>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.185.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="canvas-container"></div>
+  <div id="sidebar">
+    <h2>Fluffy Grass V2</h2>
+
+    <div class="control-group">
+      <label>Base Color</label>
+      <input type="color" id="base-color" value="#313f1b">
+    </div>
+
+    <div class="control-group">
+      <label>Tip Color 1</label>
+      <input type="color" id="tip-color-1" value="#9bd38d">
+    </div>
+
+    <div class="control-group">
+      <label>Tip Color 2</label>
+      <input type="color" id="tip-color-2" value="#1f352a">
+    </div>
+
+    <div class="control-group">
+      <label>Noise Scale <span class="val-display" id="val-noise">1.5</span></label>
+      <input type="range" id="noise-scale" min="0" max="5" step="0.1" value="1.5">
+    </div>
+
+    <div class="control-group">
+      <label>Light Intensity <span class="val-display" id="val-intensity">1.0</span></label>
+      <input type="range" id="light-intensity" min="0" max="2" step="0.1" value="1.0">
+    </div>
+
+    <div class="control-group">
+      <label>Shadow Darkness <span class="val-display" id="val-shadow">0.5</span></label>
+      <input type="range" id="shadow-darkness" min="0" max="1" step="0.05" value="0.5">
+    </div>
+
+    <div class="control-group">
+      <label>Grass Count <span class="val-display" id="val-count">4000</span></label>
+      <input type="range" id="grass-count" min="1000" max="20000" step="500" value="4000">
+    </div>
+
+    <button id="btn-shadows" class="active">SHADOWS: ON</button>
+    <button id="btn-randomize">RANDOMIZE COLORS</button>
+
+    <div id="stats-box">
+      <div>Renderer: WebGL2</div>
+      <div id="stat-status">Loading assets...</div>
+    </div>
+  </div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    import { GrassMaterial, generateGrass } from './procedural-grass.js';
+
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color("#eeeeee");
+    scene.fog = new THREE.FogExp2("#eeeeee", 0.02);
+
+    const camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
+    camera.position.set(-17, 12, -10);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, precision: 'highp' });
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    container.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.autoRotate = true;
+    controls.autoRotateSpeed = -0.5;
+
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    scene.add(ambientLight);
+
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 2);
+    directionalLight.castShadow = true;
+    directionalLight.position.set(100, 100, 100);
+    directionalLight.shadow.camera.far = 200;
+    directionalLight.shadow.camera.left = -50;
+    directionalLight.shadow.camera.right = 50;
+    directionalLight.shadow.camera.top = 50;
+    directionalLight.shadow.camera.bottom = -50;
+    directionalLight.shadow.mapSize.set(2048, 2048);
+    scene.add(directionalLight);
+
+    const clock = new THREE.Clock();
+    const loadingManager = new THREE.LoadingManager();
+    const textureLoader = new THREE.TextureLoader(loadingManager);
+    const gltfLoader = new GLTFLoader(loadingManager);
+
+    let grassMaterial;
+    let grassInstancedMesh;
+    let terrainMesh;
+    let savedGrassGeometry;
+    
+    let grassCount = 4000;
+
+    const terrainMat = new THREE.MeshPhongMaterial({ color: "#5e875e" });
+
+    // Load Textures
+    const noiseTex = textureLoader.load("/perlinnoise.webp");
+    noiseTex.wrapS = noiseTex.wrapT = THREE.RepeatWrapping;
+    const grassAlphaTex = textureLoader.load("/grass.jpeg");
+
+    loadingManager.onLoad = () => {
+        document.getElementById('stat-status').textContent = 'Ready';
+        grassMaterial = new GrassMaterial();
+        grassMaterial.setupTextures(grassAlphaTex, noiseTex);
+        loadModels();
+    };
+
+    function loadModels() {
+        gltfLoader.load("/island.glb", (gltf) => {
+            gltf.scene.traverse((child) => {
+                if (child instanceof THREE.Mesh) {
+                    child.material = terrainMat;
+                    child.receiveShadow = true;
+                    child.geometry.scale(3, 3, 3);
+                    terrainMesh = child;
+                }
+            });
+            scene.add(gltf.scene);
+
+            gltfLoader.load("/grassLODs.glb", (gltf) => {
+                gltf.scene.traverse((child) => {
+                    if (child instanceof THREE.Mesh && child.name.includes("LOD00")) {
+                        child.geometry.scale(5, 5, 5);
+                        savedGrassGeometry = child.geometry;
+                    }
+                });
+                rebuildGrass();
+            });
+        });
+    }
+
+    function rebuildGrass() {
+        if (grassInstancedMesh) {
+            scene.remove(grassInstancedMesh);
+            grassInstancedMesh.geometry.dispose();
+            grassInstancedMesh.dispose();
+        }
+        if (terrainMesh && savedGrassGeometry && grassMaterial) {
+            grassInstancedMesh = generateGrass(terrainMesh, savedGrassGeometry, grassMaterial, grassCount);
+            scene.add(grassInstancedMesh);
+        }
+    }
+
+    // Controls
+    const inBase = document.getElementById('base-color');
+    const inTip1 = document.getElementById('tip-color-1');
+    const inTip2 = document.getElementById('tip-color-2');
+    const inNoise = document.getElementById('noise-scale');
+    const inLight = document.getElementById('light-intensity');
+    const inShadow = document.getElementById('shadow-darkness');
+    const inCount = document.getElementById('grass-count');
+    const btnShadows = document.getElementById('btn-shadows');
+    const btnRand = document.getElementById('btn-randomize');
+
+    inBase.addEventListener('input', e => { if(grassMaterial) grassMaterial.uniforms.baseColor.value.set(e.target.value); });
+    inTip1.addEventListener('input', e => { if(grassMaterial) grassMaterial.uniforms.tipColor1.value.set(e.target.value); });
+    inTip2.addEventListener('input', e => { if(grassMaterial) grassMaterial.uniforms.tipColor2.value.set(e.target.value); });
+    
+    inNoise.addEventListener('input', e => {
+        document.getElementById('val-noise').textContent = e.target.value;
+        if(grassMaterial) grassMaterial.uniforms.uNoiseScale.value = parseFloat(e.target.value);
+    });
+    
+    inLight.addEventListener('input', e => {
+        document.getElementById('val-intensity').textContent = e.target.value;
+        if(grassMaterial) grassMaterial.uniforms.uGrassLightIntensity.value = parseFloat(e.target.value);
+    });
+    
+    inShadow.addEventListener('input', e => {
+        document.getElementById('val-shadow').textContent = e.target.value;
+        if(grassMaterial) grassMaterial.uniforms.uShadowDarkness.value = parseFloat(e.target.value);
+    });
+
+    inCount.addEventListener('change', e => {
+        document.getElementById('val-count').textContent = e.target.value;
+        grassCount = parseInt(e.target.value);
+        rebuildGrass();
+    });
+
+    let shadowsEnabled = true;
+    btnShadows.addEventListener('click', () => {
+        shadowsEnabled = !shadowsEnabled;
+        if(grassMaterial) grassMaterial.updateGrassGraphicsChange(shadowsEnabled);
+        btnShadows.textContent = shadowsEnabled ? 'SHADOWS: ON' : 'SHADOWS: OFF';
+        btnShadows.className = shadowsEnabled ? 'active' : '';
+    });
+
+    btnRand.addEventListener('click', () => {
+        const randColor = () => '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
+        const c1 = randColor(), c2 = randColor(), c3 = randColor();
+        inBase.value = c1; inTip1.value = c2; inTip2.value = c3;
+        if(grassMaterial) {
+            grassMaterial.uniforms.baseColor.value.set(c1);
+            grassMaterial.uniforms.tipColor1.value.set(c2);
+            grassMaterial.uniforms.tipColor2.value.set(c3);
+        }
+    });
+
+    window.addEventListener('resize', () => {
+      camera.aspect = container.clientWidth / container.clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(container.clientWidth, container.clientHeight);
+    });
+
+    function animate() {
+      requestAnimationFrame(animate);
+      if (grassMaterial) {
+          grassMaterial.update(clock.getElapsedTime());
+      }
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    animate();
+  </script>
+</body>
+</html>

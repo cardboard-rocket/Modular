@@ -245,25 +245,12 @@
   <div id="fps-overlay">-- FPS</div>
   <div id="canvas-container"></div>
   <div id="sidebar">
-    <h2>Grass V1 Editor</h2>
+    <h2>Flower Generator</h2>
 
+    <!-- GLOBAL SETTINGS -->
     <div class="panel">
       <div class="panel-header" onclick="this.parentElement.classList.toggle('collapsed')">
-        <span>Presets</span>
-        <span>▼</span>
-      </div>
-      <div class="panel-content preset-container">
-        <button class="preset-btn" onclick="applyPreset('ghibli')">Ghibli Field</button>
-        <button class="preset-btn" onclick="applyPreset('dry')">Dry Savannah</button>
-        <button class="preset-btn" onclick="applyPreset('dense')">Dense Lawn</button>
-        <button class="preset-btn" onclick="applyPreset('flowers')">Flower Meadow</button>
-      </div>
-    </div>
-
-    <!-- GRASS SETTINGS -->
-    <div class="panel">
-      <div class="panel-header" onclick="this.parentElement.classList.toggle('collapsed')">
-        <span>Grass Settings</span>
+        <span>Global Settings</span>
         <span>▼</span>
       </div>
       <div class="panel-content">
@@ -276,111 +263,28 @@
         </div>
         <div>
           <div class="control-row">
-            <label for="tuft-count">Blade Count</label>
-            <span id="tuft-count-val" class="val-display">50000</span>
-          </div>
-          <input type="range" id="tuft-count" min="1000" max="250000" step="1000" value="50000">
-        </div>
-        <div>
-          <div class="control-row">
             <label for="spread-radius">Spread Radius</label>
             <span id="spread-radius-val" class="val-display">50</span>
           </div>
           <input type="range" id="spread-radius" min="5" max="150" step="1" value="50">
         </div>
         <div>
-          <div class="control-row">
-            <label for="blade-width">Blade Width</label>
-            <span id="blade-width-val" class="val-display">0.4</span>
-          </div>
-          <input type="range" id="blade-width" min="0.05" max="2.0" step="0.05" value="0.4">
+          <label for="ground-color">Ground Color</label>
+          <input type="color" id="ground-color" value="#4b8529">
+        </div>
+        <div>
+          <label for="ground-variation-color">Ground Variation Color</label>
+          <input type="color" id="ground-variation-color" value="#2c5e26">
         </div>
         <div>
           <div class="control-row">
-            <label for="blade-height">Blade Height</label>
-            <span id="blade-height-val" class="val-display">0.8</span>
-          </div>
-          <input type="range" id="blade-height" min="0.1" max="3.0" step="0.1" value="0.8">
-        </div>
-
-        <div>
-          <label for="texture-select">Grass Texture</label>
-          <select id="texture-select">
-            <option value="threex.grass/images/grass01.png">Grass 1</option>
-            <option value="threex.grass/images/grass02.png">Grass 2 (Bushy)</option>
-          </select>
-        </div>
-        <div>
-          <label for="root-color">Root Color</label>
-          <input type="color" id="root-color" value="#2c5e26">
-        </div>
-        <div>
-          <label for="variation-root-color">Variation Root Color</label>
-          <input type="color" id="variation-root-color" value="#1c4021">
-        </div>
-        <div>
-          <label for="tip-color">Tip Color</label>
-          <input type="color" id="tip-color" value="#c3e669">
-        </div>
-        <div>
-          <label for="variation-tip-color">Variation Tip Color</label>
-          <input type="color" id="variation-tip-color" value="#a5d848">
-        </div>
-        <div>
-          <div class="control-row">
-            <label for="color-noise-scale">Color Patch Size</label>
+            <label for="color-noise-scale">Ground Color Patch Size</label>
             <span id="color-noise-scale-val" class="val-display">0.05</span>
           </div>
           <input type="range" id="color-noise-scale" min="0.01" max="0.5" step="0.01" value="0.05">
         </div>
       </div>
     </div>
-    
-    <!-- STATIC GRASS SETTINGS -->
-    <div class="panel">
-      <div class="panel-header" onclick="this.parentElement.classList.toggle('collapsed')">
-        <span>Static Grass Settings</span>
-        <span>▼</span>
-      </div>
-      <div class="panel-content">
-        <div style="margin-bottom: 4px;">
-          <div class="control-row">
-            <label for="static-grass-toggle">Enable Static Grass</label>
-            <input type="checkbox" id="static-grass-toggle" checked style="width: auto; margin: 0;">
-          </div>
-        </div>
-        <div>
-          <div class="control-row">
-            <label for="static-count">Blade Count</label>
-            <span id="static-count-val" class="val-display">50000</span>
-          </div>
-          <input type="range" id="static-count" min="1000" max="250000" step="1000" value="50000">
-        </div>
-        <div>
-          <div class="control-row">
-            <label for="static-width">Blade Width</label>
-            <span id="static-width-val" class="val-display">0.4</span>
-          </div>
-          <input type="range" id="static-width" min="0.05" max="2.0" step="0.05" value="0.4">
-        </div>
-        <div>
-          <div class="control-row">
-            <label for="static-height">Blade Height</label>
-            <span id="static-height-val" class="val-display">0.8</span>
-          </div>
-          <input type="range" id="static-height" min="0.1" max="3.0" step="0.1" value="0.8">
-        </div>
-        <div>
-          <label for="static-root-color">Root Color</label>
-          <input type="color" id="static-root-color" value="#2c5e26">
-        </div>
-        <div>
-          <label for="static-tip-color">Tip Color</label>
-          <input type="color" id="static-tip-color" value="#c3e669">
-        </div>
-      </div>
-    </div>
-    
     <!-- FLOWER SETTINGS -->
     <div class="panel">
       <div class="panel-header" onclick="this.parentElement.classList.toggle('collapsed')">
@@ -584,9 +488,6 @@
         void main() {
             float n = noise(vWorldPosition.xz * uColorNoiseScale);
             vec3 color = mix(uRootColor, uVariationRootColor, n);
-            
-            // Apply slight ambient occlusion to match grass roots, but not pitch black (0.8 multiplier)
-            color *= 0.8;
 
             float diffuse = max(0.0, dot(vNormal, normalize(uLightDir)));
             float lightBands = smoothstep(0.4, 0.5, diffuse) * 0.4 + smoothstep(0.8, 0.9, diffuse) * 0.6;
@@ -607,23 +508,12 @@
     scene.add(grassGroup);
 
     // --- DOM CONTROLS ---
+    // --- DOM CONTROLS ---
     const controlsConfig = {
-      count: { el: document.getElementById('tuft-count'), val: document.getElementById('tuft-count-val') },
       spread: { el: document.getElementById('spread-radius'), val: document.getElementById('spread-radius-val') },
-      width: { el: document.getElementById('blade-width'), val: document.getElementById('blade-width-val') },
-      height: { el: document.getElementById('blade-height'), val: document.getElementById('blade-height-val') },
-      texture: { el: document.getElementById('texture-select') },
-      rootColor: { el: document.getElementById('root-color') },
-      variationRootColor: { el: document.getElementById('variation-root-color') },
-      tipColor: { el: document.getElementById('tip-color') },
-      variationTipColor: { el: document.getElementById('variation-tip-color') },
+      groundColor: { el: document.getElementById('ground-color') },
+      groundVariationColor: { el: document.getElementById('ground-variation-color') },
       colorNoiseScale: { el: document.getElementById('color-noise-scale'), val: document.getElementById('color-noise-scale-val') },
-      
-      staticCount: { el: document.getElementById('static-count'), val: document.getElementById('static-count-val') },
-      staticWidth: { el: document.getElementById('static-width'), val: document.getElementById('static-width-val') },
-      staticHeight: { el: document.getElementById('static-height'), val: document.getElementById('static-height-val') },
-      staticRootColor: { el: document.getElementById('static-root-color') },
-      staticTipColor: { el: document.getElementById('static-tip-color') },
 
       flowerTexture: { el: document.getElementById('flower-texture-select') },
       flowerCount: { el: document.getElementById('flower-count'), val: document.getElementById('flower-count-val') },
@@ -635,7 +525,7 @@
       seed: { el: document.getElementById('random-seed'), val: document.getElementById('random-seed-val') }
     };
 
-    function updateGrass() {
+    function updateFlowers() {
       // Clear previous instances
       while(grassGroup.children.length > 0){
         const mesh = grassGroup.children[0];
@@ -646,42 +536,14 @@
 
       currentSeed = parseInt(document.getElementById('random-seed').value);
 
-      const count = parseInt(controlsConfig.count.el.value);
       const spread = parseFloat(controlsConfig.spread.el.value);
-      const width = parseFloat(controlsConfig.width.el.value);
-      const height = parseFloat(controlsConfig.height.el.value);
-      const textureUrl = controlsConfig.texture.el.value;
-      const rootColor = controlsConfig.rootColor.el.value;
-      const variationRootColor = controlsConfig.variationRootColor.el.value;
-      const tipColor = controlsConfig.tipColor.el.value;
-      const variationTipColor = controlsConfig.variationTipColor.el.value;
       const colorNoiseScale = parseFloat(controlsConfig.colorNoiseScale.el.value);
-      
-      const staticGrassEnabled = document.getElementById('static-grass-toggle').checked;
-      const staticCount = parseInt(controlsConfig.staticCount.el.value);
-      const staticWidth = parseFloat(controlsConfig.staticWidth.el.value);
-      const staticHeight = parseFloat(controlsConfig.staticHeight.el.value);
-      const staticRootColor = controlsConfig.staticRootColor.el.value;
-      const staticTipColor = controlsConfig.staticTipColor.el.value;
       
       const flowerTextureUrl = controlsConfig.flowerTexture.el.value;
       const flowerCount = parseInt(controlsConfig.flowerCount.el.value);
       const flowerWidth = parseFloat(controlsConfig.flowerWidth.el.value);
       const flowerHeight = parseFloat(controlsConfig.flowerHeight.el.value);
 
-      // Update Ground Shader
-      groundMat.uniforms.uRootColor.value.set(rootColor);
-      groundMat.uniforms.uVariationRootColor.value.set(variationRootColor);
-      groundMat.uniforms.uColorNoiseScale.value = colorNoiseScale;
-
-      // 1. Build Normal Grass
-      const grassPositions = [];
-      for (let i = 0; i < count; i++) {
-        const r = Math.sqrt(seededRandom()) * spread;
-        const theta = seededRandom() * Math.PI * 2;
-        grassPositions.push(new THREE.Vector3(Math.cos(theta) * r, 0, Math.sin(theta) * r));
-      }
-      
       const CHUNK_SIZE = 20;
       function bucketPositions(positions) {
           const chunks = {};
@@ -695,52 +557,14 @@
           return chunks;
       }
 
-      if (grassPositions.length > 0) {
-        const grassChunks = bucketPositions(grassPositions);
-        Object.values(grassChunks).forEach(chunk => {
-            const grassMesh = createGrassTufts(chunk.positions, {
-              width: width, height: height, 
-              rootColor: rootColor, variationRootColor: variationRootColor,
-              tipColor: tipColor, variationTipColor: variationTipColor,
-              textureUrl: textureUrl, colorBlend: 1.0, colorNoiseScale: colorNoiseScale,
-              lightDir: globalLightDir
-            });
-            grassMesh.boundingSphere = new THREE.Sphere(chunk.center, CHUNK_SIZE * 1.5);
-            grassGroup.add(grassMesh);
-        });
-      }
+      // Update Ground Shader
+      const rootColor = controlsConfig.groundColor.el.value;
+      const variationRootColor = controlsConfig.groundVariationColor.el.value;
+      groundMat.uniforms.uRootColor.value.set(rootColor);
+      groundMat.uniforms.uVariationRootColor.value.set(variationRootColor);
+      groundMat.uniforms.uColorNoiseScale.value = colorNoiseScale;
 
-      // 2. Build Static Grass
-      if (staticGrassEnabled && staticCount > 0) {
-        const staticPositions = [];
-        for(let i=0; i < staticCount; i++) {
-           const r = Math.sqrt(seededRandom()) * spread;
-           const theta = seededRandom() * Math.PI * 2;
-           staticPositions.push(new THREE.Vector3(Math.cos(theta) * r, 0, Math.sin(theta) * r));
-        }
-        
-        const staticChunks = bucketPositions(staticPositions);
-        Object.values(staticChunks).forEach(chunk => {
-            const staticMesh = createGrassTufts(chunk.positions, {
-              width: staticWidth, 
-              height: staticHeight, 
-              rootColor: staticRootColor, 
-              variationRootColor: variationRootColor,
-              tipColor: staticTipColor, 
-              variationTipColor: variationTipColor,
-              textureUrl: textureUrl, 
-              colorBlend: 1.0, 
-              colorNoiseScale: colorNoiseScale,
-              lightDir: globalLightDir,
-              isStatic: true
-            });
-            staticMesh.userData.isStatic = true;
-            staticMesh.boundingSphere = new THREE.Sphere(chunk.center, CHUNK_SIZE * 1.5);
-            grassGroup.add(staticMesh);
-        });
-      }
-      
-      // 3. Build Flowers (Multiple Colors independently)
+      // Build Flowers
       if (flowerTextureUrl !== "none" && flowerCount > 0) {
         const activeColors = [];
         for (let i = 1; i <= 5; i++) {
@@ -750,17 +574,13 @@
         }
 
         if (activeColors.length > 0) {
-          // Generate raw noise-clustered positions first
           const rawFlowerPositions = [];
-          for (let i = 0; i < flowerCount * 4; i++) { // Oversample for noise threshold
+          for (let i = 0; i < flowerCount; i++) {
              const r = Math.sqrt(seededRandom()) * spread;
              const theta = seededRandom() * Math.PI * 2;
              const x = Math.cos(theta) * r;
              const z = Math.sin(theta) * r;
-             if (noise(x * 0.15, z * 0.15) > 0.6) {
-                 rawFlowerPositions.push(new THREE.Vector3(x, 0, z));
-                 if (rawFlowerPositions.length >= flowerCount) break; // Reached desired count
-             }
+             rawFlowerPositions.push(new THREE.Vector3(x, 0, z));
           }
           
           // Split positions among the active colors
@@ -837,82 +657,13 @@
       const strength = parseFloat(controlsConfig.windStrength.el.value);
       grassGroup.children.forEach(mesh => {
         if (mesh.material && mesh.material.uniforms) {
-           if (mesh.userData.isStatic) {
-               mesh.material.uniforms.uWindSpeed.value = 0.0;
-               mesh.material.uniforms.uWindStrength.value = 0.0;
-           } else {
-               mesh.material.uniforms.uWindSpeed.value = speed;
-               mesh.material.uniforms.uWindStrength.value = strength;
-           }
+            mesh.material.uniforms.uWindSpeed.value = speed;
+            mesh.material.uniforms.uWindStrength.value = strength;
         }
       });
     }
 
-    // --- PRESET SYSTEM ---
-    window.applyPreset = function(presetName) {
-      if (presetName === 'ghibli') {
-        controlsConfig.count.el.value = 50000;
-        controlsConfig.spread.el.value = 50;
-        controlsConfig.width.el.value = 0.4;
-        controlsConfig.height.el.value = 0.8;
-        controlsConfig.rootColor.el.value = '#2c5e26';
-        controlsConfig.variationRootColor.el.value = '#1c4021';
-        controlsConfig.tipColor.el.value = '#c3e669';
-        controlsConfig.variationTipColor.el.value = '#a5d848';
-        controlsConfig.colorNoiseScale.el.value = 0.05;
-        controlsConfig.flowerTexture.el.value = 'none';
-        controlsConfig.windSpeed.el.value = 2.5;
-        controlsConfig.windStrength.el.value = 1.0;
-        
-        controlsConfig.staticCount.el.value = 50000;
-        controlsConfig.staticWidth.el.value = 0.4;
-        controlsConfig.staticHeight.el.value = 0.8;
-        controlsConfig.staticRootColor.el.value = '#2c5e26';
-        controlsConfig.staticTipColor.el.value = '#c3e669';
-      } else if (presetName === 'dry') {
-        controlsConfig.count.el.value = 30000;
-        controlsConfig.spread.el.value = 60;
-        controlsConfig.width.el.value = 0.3;
-        controlsConfig.height.el.value = 1.2;
-        controlsConfig.rootColor.el.value = '#63532c';
-        controlsConfig.tipColor.el.value = '#d1bb73';
-        controlsConfig.flowerTexture.el.value = 'none';
-        controlsConfig.windSpeed.el.value = 3.5;
-        controlsConfig.windStrength.el.value = 1.5;
-      } else if (presetName === 'dense') {
-        controlsConfig.count.el.value = 120000;
-        controlsConfig.spread.el.value = 40;
-        controlsConfig.width.el.value = 0.3;
-        controlsConfig.height.el.value = 0.5;
-        controlsConfig.rootColor.el.value = '#0a2e15';
-        controlsConfig.tipColor.el.value = '#358a2e';
-        controlsConfig.flowerTexture.el.value = 'none';
-        controlsConfig.windSpeed.el.value = 1.5;
-        controlsConfig.windStrength.el.value = 0.5;
-      } else if (presetName === 'flowers') {
-        controlsConfig.count.el.value = 40000;
-        controlsConfig.spread.el.value = 50;
-        controlsConfig.width.el.value = 0.5;
-        controlsConfig.height.el.value = 0.7;
-        controlsConfig.rootColor.el.value = '#164e29';
-        controlsConfig.tipColor.el.value = '#57c244';
-        controlsConfig.flowerTexture.el.value = 'threex.grass/images/flowers01.png';
-        controlsConfig.flowerCount.el.value = 20000;
-        controlsConfig.flowerWidth.el.value = 0.7;
-        controlsConfig.flowerHeight.el.value = 0.9;
-        controlsConfig.windSpeed.el.value = 2.0;
-        controlsConfig.windStrength.el.value = 0.8;
-        // enable all colors
-        for(let i=1; i<=5; i++) document.getElementById(`flower-color-${i}-en`).checked = true;
-      }
-
-      Object.keys(controlsConfig).forEach(key => {
-        const item = controlsConfig[key];
-        if (item.val) item.val.textContent = item.el.value;
-      });
-
-      updateGrass();
-    };
+    // --- PRESET SYSTEM (Removed) ---
 
     function updateStats() {
       let trianglesCount = 0;
@@ -935,34 +686,42 @@
       document.getElementById('stat-instances').textContent = `Total Instances: ${instancesCount}`;
     }
 
-    Object.keys(controlsConfig).forEach(key => {
-      const item = controlsConfig[key];
-      if (item.el) {
-        item.el.addEventListener('input', () => {
-          if (item.val) item.val.textContent = item.el.value;
-          if (key === 'windSpeed' || key === 'windStrength') {
-             updateWind();
-          } else {
-            debouncedUpdateGrass();
-          }
-        });
-      }
+    // --- EVENT LISTENERS ---
+    Object.values(controlsConfig).forEach(cfg => {
+      if (!cfg.el) return;
+      cfg.el.addEventListener('input', () => {
+        if (cfg.val) cfg.val.textContent = cfg.el.value;
+        updateFlowers();
+      });
     });
 
-    document.getElementById('static-grass-toggle').addEventListener('change', debouncedUpdateGrass);
-    for(let i=1; i<=5; i++) {
-       document.getElementById(`flower-color-${i}-en`).addEventListener('change', debouncedUpdateGrass);
-       document.getElementById(`flower-color-${i}`).addEventListener('input', debouncedUpdateGrass);
-    }
-
-    let debounceTimer;
-    function debouncedUpdateGrass() {
-      clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(updateGrass, 150);
+    for (let i = 1; i <= 5; i++) {
+        document.getElementById(`flower-color-${i}-en`).addEventListener('change', updateFlowers);
+        document.getElementById(`flower-color-${i}`).addEventListener('input', updateFlowers);
     }
 
     document.getElementById('reset-btn').addEventListener('click', () => {
-      applyPreset('ghibli');
+      controlsConfig.seed.el.value = 12345;
+      controlsConfig.spread.el.value = 50;
+      controlsConfig.groundColor.el.value = '#4b8529';
+      controlsConfig.groundVariationColor.el.value = '#2c5e26';
+      controlsConfig.colorNoiseScale.el.value = 0.05;
+      controlsConfig.flowerTexture.el.value = 'threex.grass/images/flowers01.png';
+      controlsConfig.flowerCount.el.value = 15000;
+      controlsConfig.flowerWidth.el.value = 0.6;
+      controlsConfig.flowerHeight.el.value = 0.8;
+      controlsConfig.windSpeed.el.value = 2.5;
+      controlsConfig.windStrength.el.value = 1.0;
+
+      Object.values(controlsConfig).forEach(cfg => {
+        if (cfg.val) cfg.val.textContent = cfg.el.value;
+      });
+      
+      for (let i = 1; i <= 5; i++) {
+          document.getElementById(`flower-color-${i}-en`).checked = true;
+      }
+      
+      updateFlowers();
     });
 
     window.addEventListener('resize', () => {
@@ -971,13 +730,19 @@
       renderer.setSize(container.clientWidth, container.clientHeight);
     });
 
+    // --- INIT ---
+    Object.values(controlsConfig).forEach(cfg => {
+        if (cfg.val) cfg.val.textContent = cfg.el.value;
+    });
+    updateFlowers();
+
     const clock = new THREE.Clock();
     let frameCount = 0;
     let lastFpsTime = 0;
     const statFps = document.getElementById('stat-fps');
     const overlayFps = document.getElementById('fps-overlay');
 
-    const LOD_RADIUS = 400; // Increased culling distance so chunks don't disappear close to camera
+    const LOD_RADIUS = 400; // Increased culling distance
 
     function animate() {
       requestAnimationFrame(animate);
@@ -1009,7 +774,6 @@
       renderer.render(scene, camera);
     }
 
-    updateGrass();
     animate();
   </script>
 </body>

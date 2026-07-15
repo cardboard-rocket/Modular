@@ -1,0 +1,8 @@
+{
+  "name": "Ghibli Trees v2",
+  "description": "An interactive WebGL Three.js showcase featuring 40 procedural biome-specific assets with custom toon shading, vertex wind sway, and normal averaging.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

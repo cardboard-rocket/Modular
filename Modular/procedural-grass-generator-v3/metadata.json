@@ -1,0 +1,6 @@
+{
+  "name": "Procedural Grass Generator",
+  "description": "A high-performance interactive 3D procedural grass generator built with React Three Fiber.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

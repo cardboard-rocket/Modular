@@ -1,0 +1,9 @@
+{
+  "name": "modular-generators",
+  "private": true,
+  "workspaces": [
+    "procedural-grass-generator-v3",
+    "ghibli-trees-various",
+    "ghibli-trees-v2"
+  ]
+}

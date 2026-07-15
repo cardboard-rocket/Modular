@@ -741,20 +741,36 @@ console.error = function(...args) {
             let lowerZone = Math.floor(zone);
             let upperZone = Math.ceil(zone);
 
-            if (zone < 1.0) {
-                biomes[0].getColor(h, worldX, worldZ, snoise, tempColor, smoothstep);
-            } else if (zone < 3.0) {
-                biomes[2].getColor(h, worldX, worldZ, snoise, tempColor, smoothstep);
-            } else {
-                if (lowerZone === upperZone) {
-                    biomes[lowerZone].getColor(h, worldX, worldZ, snoise, tempColor, smoothstep);
+            if (customColors.enabled > 0.5) {
+                if (h < 1.0) {
+                    tempColor.copy(new THREE.Color(0x1a4a8c));
+                } else if (h < 2.35) {
+                    tempColor.lerpColors(new THREE.Color(0x1a4a8c), customColors.sand, smoothstep(1.0, 2.35, h));
+                } else if (h < 4.2) {
+                    tempColor.copy(customColors.sand);
+                } else if (h < 6.2) {
+                    tempColor.lerpColors(customColors.sand, customColors.grass, smoothstep(4.2, 6.2, h));
+                } else if (h < 28.0) {
+                    tempColor.lerpColors(customColors.grass, customColors.dirt, smoothstep(15.0, 28.0, h));
                 } else {
-                    const t = zone - lowerZone;
-                    const c1 = new THREE.Color();
-                    const c2 = new THREE.Color();
-                    biomes[lowerZone].getColor(h, worldX, worldZ, snoise, c1, smoothstep);
-                    biomes[upperZone].getColor(h, worldX, worldZ, snoise, c2, smoothstep);
-                    tempColor.lerpColors(c1, c2, t);
+                    tempColor.copy(customColors.dirt);
+                }
+            } else {
+                if (zone < 1.0) {
+                    biomes[0].getColor(h, worldX, worldZ, snoise, tempColor, smoothstep);
+                } else if (zone < 3.0) {
+                    biomes[2].getColor(h, worldX, worldZ, snoise, tempColor, smoothstep);
+                } else {
+                    if (lowerZone === upperZone) {
+                        biomes[lowerZone].getColor(h, worldX, worldZ, snoise, tempColor, smoothstep);
+                    } else {
+                        const t = zone - lowerZone;
+                        const c1 = new THREE.Color();
+                        const c2 = new THREE.Color();
+                        biomes[lowerZone].getColor(h, worldX, worldZ, snoise, c1, smoothstep);
+                        biomes[upperZone].getColor(h, worldX, worldZ, snoise, c2, smoothstep);
+                        tempColor.lerpColors(c1, c2, t);
+                    }
                 }
             }
 

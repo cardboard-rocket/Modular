@@ -331,6 +331,8 @@ export function initEditor(options) {
                 <button id="btn-clear-paint" class="editor-btn btn-danger">Clear Paint Map</button>
                 <hr style="border:0; border-top:1px solid rgba(255,255,255,0.08); margin:8px 0;">
                 <button id="btn-save-local" class="editor-btn">Save to LocalStorage</button>
+                <button id="btn-load-local" class="editor-btn">Restore Previous Settings</button>
+                <button id="btn-reset-defaults" class="editor-btn btn-danger">Reset to Defaults</button>
                 <button id="btn-export-json" class="editor-btn">Export JSON</button>
                 <button id="btn-import-json" class="editor-btn">Import JSON</button>
                 <input type="file" id="file-import-json" style="display:none;" accept=".json">
@@ -621,6 +623,40 @@ export function initEditor(options) {
     if (btnSaveLocal && options.saveToLocalStorage) {
         btnSaveLocal.addEventListener('click', () => {
             options.saveToLocalStorage();
+        });
+    }
+
+    // Load from LocalStorage Button
+    const btnLoadLocal = document.getElementById('btn-load-local');
+    if (btnLoadLocal && options.loadFromLocalStorage) {
+        btnLoadLocal.addEventListener('click', () => {
+            if (confirm("Restore settings from last save? Unsaved changes will be lost.")) {
+                options.loadFromLocalStorage();
+                syncUIColors();
+                rebuildTerrain();
+                triggerMinimapUpdate();
+            }
+        });
+    }
+
+    // Reset to Defaults
+    const btnResetDefaults = document.getElementById('btn-reset-defaults');
+    if (btnResetDefaults) {
+        btnResetDefaults.addEventListener('click', () => {
+            if (confirm("Reset all settings to default?")) {
+                if (options.clearSplatGrid) options.clearSplatGrid();
+                customColors.enabled = 0.0;
+                customColors.grass.setHex(0x389c45);
+                customColors.dirt.setHex(0xdcb58a);
+                customColors.sand.setHex(0xf2e1b8);
+                customColors.noiseScale = 1.0;
+                customColors.heightMultiplier = 1.0;
+                customColors.brushSoftness = 0.50;
+                syncUIColors();
+                terrainColorUniforms.uCustomColorsEnabled.value = 0.0;
+                rebuildTerrain();
+                triggerMinimapUpdate();
+            }
         });
     }
 
