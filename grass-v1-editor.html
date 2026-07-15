@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Grass V1 Generator & Live Editor</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background-color: #0b0c10;
+      font-family: 'Courier New', Courier, monospace;
+      color: #c5c6c7;
+      user-select: none;
+    }
+    #canvas-container {
+      width: calc(100vw - 340px);
+      height: 100vh;
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 1;
+    }
+    #sidebar {
+      position: absolute;
+      right: 0;
+      top: 0;
+      width: 340px;
+      height: 100vh;
+      background-color: #1f2833;
+      border-left: 2px solid #45f3ff;
+      z-index: 10;
+      box-sizing: border-box;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      overflow-y: auto;
+      box-shadow: -5px 0 15px rgba(0,0,0,0.5);
+    }
+    h2 {
+      margin-top: 0;
+      font-size: 16px;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      border-bottom: 2px solid #45f3ff;
+      padding-bottom: 12px;
+      color: #45f3ff;
+      text-shadow: 0 0 10px rgba(69, 243, 255, 0.3);
+    }
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      background: #151c24;
+      padding: 10px;
+      border-radius: 4px;
+      border: 1px solid #2f3b4c;
+    }
+    .control-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    label {
+      font-size: 11px;
+      text-transform: uppercase;
+      color: #8f9aa6;
+      letter-spacing: 1px;
+    }
+    .val-display {
+      font-size: 11px;
+      color: #45f3ff;
+      font-weight: bold;
+    }
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 4px;
+      background: #2f3b4c;
+      outline: none;
+      border-radius: 2px;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 14px;
+      height: 14px;
+      background: #45f3ff;
+      cursor: pointer;
+      border-radius: 50%;
+      box-shadow: 0 0 8px rgba(69, 243, 255, 0.8);
+    }
+    select, button, input[type="color"] {
+      background-color: #0b0c10;
+      color: #ffffff;
+      border: 1px solid #45f3ff;
+      padding: 8px;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 12px;
+      outline: none;
+      cursor: pointer;
+      border-radius: 3px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    input[type="color"] {
+      height: 35px;
+      padding: 2px;
+    }
+    select:focus, button:focus {
+      border-color: #66fcf1;
+      box-shadow: 0 0 8px rgba(102, 252, 241, 0.5);
+    }
+    button {
+      text-align: center;
+      font-weight: bold;
+      transition: all 0.2s ease;
+      background: linear-gradient(135deg, #151c24 0%, #0f141a 100%);
+    }
+    button:hover {
+      background: #45f3ff;
+      color: #0b0c10;
+      box-shadow: 0 0 12px rgba(69, 243, 255, 0.6);
+    }
+    .btn-active {
+      background: #45f3ff;
+      color: #0b0c10;
+    }
+    #stats-box {
+      font-size: 11px;
+      color: #8f9aa6;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      background: #0b0c10;
+      padding: 10px;
+      border: 1px solid #2f3b4c;
+      border-radius: 4px;
+    }
+    .preset-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .preset-btn {
+      padding: 6px;
+      font-size: 10px;
+    }
+  </style>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.185.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="canvas-container"></div>
+  <div id="sidebar">
+    <h2>Grass V1 Editor</h2>
+
+    <div class="control-group">
+      <label>Presets</label>
+      <div class="preset-container">
+        <button class="preset-btn" onclick="applyPreset('lush')">Lush Meadow</button>
+        <button class="preset-btn" onclick="applyPreset('dry')">Dry Straw</button>
+        <button class="preset-btn" onclick="applyPreset('flowers01')">Red Flowers</button>
+        <button class="preset-btn" onclick="applyPreset('flowers02')">Blue Flowers</button>
+      </div>
+    </div>
+
+    <div class="control-group">
+      <div class="control-row">
+        <label for="tuft-count">Tufts Count</label>
+        <span id="tuft-count-val" class="val-display">5000</span>
+      </div>
+      <input type="range" id="tuft-count" min="100" max="15000" step="100" value="5000">
+    </div>
+
+    <div class="control-group">
+      <div class="control-row">
+        <label for="spread-radius">Spread Radius</label>
+        <span id="spread-radius-val" class="val-display">20</span>
+      </div>
+      <input type="range" id="spread-radius" min="1" max="50" step="0.5" value="20">
+    </div>
+
+    <div class="control-group">
+      <div class="control-row">
+        <label for="blade-width">Blade Width</label>
+        <span id="blade-width-val" class="val-display">0.4</span>
+      </div>
+      <input type="range" id="blade-width" min="0.05" max="1.5" step="0.05" value="0.4">
+    </div>
+
+    <div class="control-group">
+      <div class="control-row">
+        <label for="blade-height">Blade Height</label>
+        <span id="blade-height-val" class="val-display">0.3</span>
+      </div>
+      <input type="range" id="blade-height" min="0.05" max="1.5" step="0.05" value="0.3">
+    </div>
+
+    <div class="control-group">
+      <label for="texture-select">Texture Map</label>
+      <select id="texture-select">
+        <option value="threex.grass/images/grass01.png">Green Grass (grass01.png)</option>
+        <option value="threex.grass/images/grass02.png">Dense Bush (grass02.png)</option>
+        <option value="threex.grass/images/flowers01.png">Red Flowers (flowers01.png)</option>
+        <option value="threex.grass/images/flowers02.png">Blue Flowers (flowers02.png)</option>
+      </select>
+    </div>
+
+    <div class="control-group">
+      <label for="grass-color">Grass Color Tint</label>
+      <input type="color" id="grass-color" value="#808080">
+    </div>
+
+    <div class="control-group">
+      <label for="grass-emissive">Grass Emissive Tint</label>
+      <input type="color" id="grass-emissive" value="#051a05">
+    </div>
+
+    <div class="control-group">
+      <div class="control-row">
+        <label for="wind-speed">Wind Speed</label>
+        <span id="wind-speed-val" class="val-display">2.5</span>
+      </div>
+      <input type="range" id="wind-speed" min="0.0" max="6.0" step="0.1" value="2.5">
+    </div>
+
+    <div class="control-group">
+      <div class="control-row">
+        <label for="wind-strength">Wind Strength</label>
+        <span id="wind-strength-val" class="val-display">1.0</span>
+      </div>
+      <input type="range" id="wind-strength" min="0.0" max="3.0" step="0.1" value="1.0">
+    </div>
+
+    <div id="stats-box">
+      <div id="stat-triangles">Triangles: 0</div>
+      <div id="stat-vertices">Vertices: 0</div>
+      <div id="stat-fps">FPS: --</div>
+    </div>
+
+    <button id="reset-btn">Reset Defaults</button>
+  </div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { createGrassTufts } from './threex.grass/threex.grass.js';
+
+    // --- SETUP SCENE, CAMERA, RENDERER ---
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xffffff);
+    scene.fog = new THREE.FogExp2(0xffffff, 0.015);
+
+    const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+    camera.position.set(0, 5, 15);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    container.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.maxPolarAngle = Math.PI / 2 - 0.05;
+    controls.minDistance = 2;
+    controls.maxDistance = 50;
+
+    // --- LIGHTS ---
+    const ambientLight = new THREE.AmbientLight(0x22252a);
+    scene.add(ambientLight);
+
+    const sunLight = new THREE.DirectionalLight(0xffffff, 1.2);
+    sunLight.position.set(10, 20, 10);
+    scene.add(sunLight);
+
+    const rimLight = new THREE.DirectionalLight(0x45f3ff, 0.6);
+    rimLight.position.set(-10, -5, -10);
+    scene.add(rimLight);
+
+    // --- GROUND PLANE ---
+    const groundGeo = new THREE.PlaneGeometry(100, 100);
+    const groundTex = new THREE.TextureLoader().load('threex.grass/examples/images/grasslight-small.jpg');
+    groundTex.wrapS = THREE.RepeatWrapping;
+    groundTex.wrapT = THREE.RepeatWrapping;
+    groundTex.repeat.set(25, 25);
+
+    const groundMat = new THREE.MeshPhongMaterial({
+      map: groundTex,
+      color: 0x4f5d4e,
+      emissive: 0x050d05,
+      shininess: 10
+    });
+    const groundMesh = new THREE.Mesh(groundGeo, groundMat);
+    groundMesh.rotation.x = -Math.PI / 2;
+    scene.add(groundMesh);
+
+    // --- GRASS MANAGEMENT ---
+    let grassMesh = null;
+    const globalUniforms = {
+      uTime: { value: 0 },
+      uWindSpeed: { value: 2.5 },
+      uWindStrength: { value: 1.0 }
+    };
+
+    // --- DOM CONTROLS ---
+    const controlsConfig = {
+      count: { el: document.getElementById('tuft-count'), val: document.getElementById('tuft-count-val') },
+      spread: { el: document.getElementById('spread-radius'), val: document.getElementById('spread-radius-val') },
+      width: { el: document.getElementById('blade-width'), val: document.getElementById('blade-width-val') },
+      height: { el: document.getElementById('blade-height'), val: document.getElementById('blade-height-val') },
+      texture: { el: document.getElementById('texture-select') },
+      color: { el: document.getElementById('grass-color') },
+      emissive: { el: document.getElementById('grass-emissive') },
+      windSpeed: { el: document.getElementById('wind-speed'), val: document.getElementById('wind-speed-val') },
+      windStrength: { el: document.getElementById('wind-strength'), val: document.getElementById('wind-strength-val') }
+    };
+
+    function updateGrass() {
+      // 1. Clean up old mesh
+      if (grassMesh) {
+        scene.remove(grassMesh);
+        if (grassMesh.geometry) grassMesh.geometry.dispose();
+        if (grassMesh.material) {
+          if (grassMesh.material.map) grassMesh.material.map.dispose();
+          grassMesh.material.dispose();
+        }
+      }
+
+      // 2. Read values
+      const count = parseInt(controlsConfig.count.el.value);
+      const spread = parseFloat(controlsConfig.spread.el.value);
+      const width = parseFloat(controlsConfig.width.el.value);
+      const height = parseFloat(controlsConfig.height.el.value);
+      const texture = controlsConfig.texture.el.value;
+      const color = controlsConfig.color.el.value;
+      const emissive = controlsConfig.emissive.el.value;
+
+      // 3. Generate random positions within the spread radius
+      const positions = [];
+      for (let i = 0; i < count; i++) {
+        // Uniform distribution in circle
+        const r = Math.sqrt(Math.random()) * spread;
+        const theta = Math.random() * Math.PI * 2;
+        positions.push(new THREE.Vector3(
+          Math.cos(theta) * r,
+          0,
+          Math.sin(theta) * r
+        ));
+      }
+
+      // 4. Create grass tufts
+      try {
+        grassMesh = createGrassTufts(positions, {
+          width: width,
+          height: height,
+          color: color,
+          emissive: emissive,
+          textureUrl: texture
+        });
+
+        // 5. Inject Wind shaders
+        const material = grassMesh.material;
+        material.onBeforeCompile = (shader) => {
+          shader.uniforms.uTime = globalUniforms.uTime;
+          shader.uniforms.uWindSpeed = globalUniforms.uWindSpeed;
+          shader.uniforms.uWindStrength = globalUniforms.uWindStrength;
+
+          shader.vertexShader = `
+            uniform float uTime;
+            uniform float uWindSpeed;
+            uniform float uWindStrength;
+          ` + shader.vertexShader;
+
+          shader.vertexShader = shader.vertexShader.replace(
+            '#include <begin_vertex>',
+            `
+            #include <begin_vertex>
+            // Wind sway logic
+            float sway = sin(uTime * uWindSpeed + transformed.y * 3.0 + transformed.x * 0.5) * cos(uTime * uWindSpeed * 0.4 + transformed.z * 0.6);
+            float heightFactor = max(0.0, transformed.y);
+            transformed.x += sway * 0.15 * heightFactor * uWindStrength;
+            transformed.z += sway * 0.12 * heightFactor * uWindStrength;
+            `
+          );
+        };
+
+        scene.add(grassMesh);
+        updateStats();
+
+      } catch (err) {
+        console.error("Failed to build grass tufts:", err);
+      }
+    }
+
+    // --- PRESET SYSTEM ---
+    window.applyPreset = function(presetName) {
+      if (presetName === 'lush') {
+        controlsConfig.count.el.value = 8000;
+        controlsConfig.spread.el.value = 18;
+        controlsConfig.width.el.value = 0.45;
+        controlsConfig.height.el.value = 0.35;
+        controlsConfig.texture.el.value = 'threex.grass/images/grass01.png';
+        controlsConfig.color.el.value = '#90a070';
+        controlsConfig.emissive.el.value = '#0c220c';
+        controlsConfig.windSpeed.el.value = 2.5;
+        controlsConfig.windStrength.el.value = 1.0;
+      } else if (presetName === 'dry') {
+        controlsConfig.count.el.value = 4000;
+        controlsConfig.spread.el.value = 25;
+        controlsConfig.width.el.value = 0.3;
+        controlsConfig.height.el.value = 0.5;
+        controlsConfig.texture.el.value = 'threex.grass/images/grass02.png';
+        controlsConfig.color.el.value = '#c2b280';
+        controlsConfig.emissive.el.value = '#2c2514';
+        controlsConfig.windSpeed.el.value = 3.5;
+        controlsConfig.windStrength.el.value = 1.5;
+      } else if (presetName === 'flowers01') {
+        controlsConfig.count.el.value = 2000;
+        controlsConfig.spread.el.value = 15;
+        controlsConfig.width.el.value = 0.5;
+        controlsConfig.height.el.value = 0.4;
+        controlsConfig.texture.el.value = 'threex.grass/images/flowers01.png';
+        controlsConfig.color.el.value = '#ffffff';
+        controlsConfig.emissive.el.value = '#220808';
+        controlsConfig.windSpeed.el.value = 1.8;
+        controlsConfig.windStrength.el.value = 0.6;
+      } else if (presetName === 'flowers02') {
+        controlsConfig.count.el.value = 2500;
+        controlsConfig.spread.el.value = 16;
+        controlsConfig.width.el.value = 0.4;
+        controlsConfig.height.el.value = 0.4;
+        controlsConfig.texture.el.value = 'threex.grass/images/flowers02.png';
+        controlsConfig.color.el.value = '#ffffff';
+        controlsConfig.emissive.el.value = '#081c2d';
+        controlsConfig.windSpeed.el.value = 2.0;
+        controlsConfig.windStrength.el.value = 0.8;
+      }
+
+      // Sync display values
+      Object.keys(controlsConfig).forEach(key => {
+        const item = controlsConfig[key];
+        if (item.val) {
+          item.val.textContent = item.el.value;
+        }
+      });
+
+      // Update uniforms directly for wind sliders
+      globalUniforms.uWindSpeed.value = parseFloat(controlsConfig.windSpeed.el.value);
+      globalUniforms.uWindStrength.value = parseFloat(controlsConfig.windStrength.el.value);
+
+      updateGrass();
+    };
+
+    // --- SETUP STATS & LISTENERS ---
+    const statTriangles = document.getElementById('stat-triangles');
+    const statVertices = document.getElementById('stat-vertices');
+    const statFps = document.getElementById('stat-fps');
+
+    function updateStats() {
+      if (!grassMesh) return;
+      const geom = grassMesh.geometry;
+      const verticesCount = geom.attributes.position ? geom.attributes.position.count : 0;
+      const trianglesCount = geom.index ? geom.index.count / 3 : verticesCount / 3;
+
+      statTriangles.textContent = `Triangles: ${Math.round(trianglesCount)}`;
+      statVertices.textContent = `Vertices: ${verticesCount}`;
+    }
+
+    // Set up slider update triggers
+    Object.keys(controlsConfig).forEach(key => {
+      const item = controlsConfig[key];
+      if (item.el) {
+        item.el.addEventListener('input', () => {
+          if (item.val) item.val.textContent = item.el.value;
+          
+          if (key === 'windSpeed') {
+            globalUniforms.uWindSpeed.value = parseFloat(item.el.value);
+          } else if (key === 'windStrength') {
+            globalUniforms.uWindStrength.value = parseFloat(item.el.value);
+          } else {
+            // Rebuild geometry for other parameters
+            debouncedUpdateGrass();
+          }
+        });
+      }
+    });
+
+    // Simple debounce to keep slider updates smooth
+    let debounceTimer;
+    function debouncedUpdateGrass() {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(updateGrass, 60);
+    }
+
+    // Reset button
+    document.getElementById('reset-btn').addEventListener('click', () => {
+      controlsConfig.count.el.value = 5000;
+      controlsConfig.spread.el.value = 20;
+      controlsConfig.width.el.value = 0.4;
+      controlsConfig.height.el.value = 0.3;
+      controlsConfig.texture.el.value = 'threex.grass/images/grass01.png';
+      controlsConfig.color.el.value = '#808080';
+      controlsConfig.emissive.el.value = '#051a05';
+      controlsConfig.windSpeed.el.value = 2.5;
+      controlsConfig.windStrength.el.value = 1.0;
+
+      // Sync display values
+      Object.keys(controlsConfig).forEach(key => {
+        const item = controlsConfig[key];
+        if (item.val) item.val.textContent = item.el.value;
+      });
+
+      globalUniforms.uWindSpeed.value = 2.5;
+      globalUniforms.uWindStrength.value = 1.0;
+
+      updateGrass();
+    });
+
+    // Resize handler
+    window.addEventListener('resize', () => {
+      camera.aspect = container.clientWidth / container.clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(container.clientWidth, container.clientHeight);
+    });
+
+    // --- ANIMATION & FPS ---
+    const clock = new THREE.Clock();
+    let frameCount = 0;
+    let lastFpsTime = 0;
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      const time = clock.getElapsedTime();
+      globalUniforms.uTime.value = time;
+
+      // FPS Counter
+      frameCount++;
+      const now = (performance || Date).now();
+      if (now - lastFpsTime >= 1000) {
+        statFps.textContent = `FPS: ${Math.round((frameCount * 1000) / (now - lastFpsTime))}`;
+        frameCount = 0;
+        lastFpsTime = now;
+      }
+
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    // Initialize
+    updateGrass();
+    animate();
+  </script>
+</body>
+</html>
