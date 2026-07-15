@@ -3100,6 +3100,7 @@ console.error = function(...args) {
         const centerX = isEditorMode ? cameraBase.position.x : playerGrp.position.x;
         const centerY = isEditorMode ? cameraBase.position.y : playerGrp.position.y;
         const centerZ = isEditorMode ? cameraBase.position.z : playerGrp.position.z;
+        const centerPos = isEditorMode ? cameraBase.position : playerGrp.position;
 
         updateTerrainGeometry(centerX, centerZ);
         waterMesh.position.x = centerX;
