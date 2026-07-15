@@ -2,8 +2,8 @@ import * as THREE from 'three';
 
 const colorDeepWater = new THREE.Color(0x1a4a8c);
 const colorSand = new THREE.Color(0xf2e1b8);
-const colorPlainsGrass = new THREE.Color(0xaed581); // Bright yellow-green grass
-const colorPlainsHigh = new THREE.Color(0xdce775);  // Pastoral light green/wheat highlight
+const colorValleyGrass = new THREE.Color(0x55b847); // Vibrant spring green
+const colorCrestGold = new THREE.Color(0xe0a96d);   // Dry wheat/amber gold
 const colorPlainsRock = new THREE.Color(0x8d6e63);  // Warm clay rock
 const colorDirt = new THREE.Color(0xdcb58a);
 
@@ -11,10 +11,9 @@ export default {
     name: "🌾 Golden Plains",
     shoreName: "░ Plain Shore",
     getHeight(x, z, snoise) {
-        // Flat, rolling hills
-        const n1 = snoise(x * 0.001, z * 0.001);
-        const n2 = snoise(x * 0.005, z * 0.005);
-        const h = n1 * 8.0 + n2 * 2.0 + 9.0;
+        // Flat, gentle rolling hills with low frequency
+        const n = snoise(x * 0.0005, z * 0.0005);
+        const h = n * 7.0 + 10.0;
         return Math.max(6.0, h);
     },
     getColor(h, x, z, snoise, tempColor, smoothstep) {
@@ -25,13 +24,14 @@ export default {
         } else if (h < 4.2) {
             tempColor.copy(colorSand);
         } else if (h < 6.2) {
-            tempColor.lerpColors(colorSand, colorPlainsGrass, smoothstep(4.2, 6.2, h));
-        } else if (h < 25) {
-            tempColor.lerpColors(colorPlainsGrass, colorPlainsHigh, smoothstep(6.2, 25, h));
-        } else if (h < 38) {
-            tempColor.lerpColors(colorPlainsHigh, colorPlainsRock, smoothstep(25, 38, h));
+            tempColor.lerpColors(colorSand, colorValleyGrass, smoothstep(4.2, 6.2, h));
+        } else if (h < 15.0) {
+            // Lerp from valley green to crest dry wheat gold
+            tempColor.lerpColors(colorValleyGrass, colorCrestGold, smoothstep(6.2, 15.0, h));
+        } else if (h < 28.0) {
+            tempColor.lerpColors(colorCrestGold, colorPlainsRock, smoothstep(15.0, 28.0, h));
         } else {
-            tempColor.lerpColors(colorPlainsRock, colorDirt, smoothstep(38, 55, h));
+            tempColor.lerpColors(colorPlainsRock, colorDirt, smoothstep(28.0, 45.0, h));
         }
     }
 };
