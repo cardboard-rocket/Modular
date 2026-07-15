@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Asset Showcase - Ghibli Procedural Gallery</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background-color: #1a1a1a;
+      font-family: 'Courier New', Courier, monospace;
+      color: #e0e0e0;
+      user-select: none;
+    }
+    #canvas-container {
+      width: 100vw;
+      height: 100vh;
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 1;
+    }
+    #sidebar {
+      position: absolute;
+      right: 0;
+      top: 0;
+      width: 320px;
+      height: 100vh;
+      background-color: #121212;
+      border-left: 1px solid #333333;
+      z-index: 10;
+      box-sizing: border-box;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    h2 {
+      margin-top: 0;
+      font-size: 15px;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      border-bottom: 1px solid #333;
+      padding-bottom: 12px;
+      color: #ffffff;
+    }
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    label {
+      font-size: 10px;
+      text-transform: uppercase;
+      color: #888888;
+      letter-spacing: 1px;
+    }
+    select, button {
+      background-color: #1c1c1c;
+      color: #ffffff;
+      border: 1px solid #444444;
+      padding: 10px;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 12px;
+      outline: none;
+      cursor: pointer;
+      border-radius: 0px;
+      width: 100%;
+      box-sizing: border-box;
+      text-align: left;
+    }
+    select:focus, button:focus {
+      border-color: #00ffaa;
+    }
+    button {
+      text-align: center;
+      font-weight: bold;
+      transition: background-color 0.2s, border-color 0.2s;
+    }
+    button:hover {
+      background-color: #282828;
+      border-color: #666666;
+    }
+    button.active {
+      background-color: #00ffaa;
+      color: #121212;
+      border-color: #00ffaa;
+    }
+    #asset-info {
+      margin-top: auto;
+      border-top: 1px solid #333;
+      padding-top: 16px;
+      font-size: 11px;
+      color: #aaaaaa;
+      line-height: 1.5;
+    }
+    .flagship-badge {
+      display: inline-block;
+      background-color: #ffaa00;
+      color: #121212;
+      font-size: 9px;
+      font-weight: bold;
+      padding: 2px 6px;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+    }
+    #stats-box {
+      font-size: 10px;
+      color: #666666;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      background: #0d0d0d;
+      padding: 8px;
+      border: 1px solid #222222;
+    }
+  </style>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.185.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="canvas-container"></div>
+  <div id="sidebar">
+    <h2>Asset Gallery</h2>
+
+    <div class="control-group">
+      <label for="biome-filter">Filter Biome</label>
+      <select id="biome-filter">
+        <option value="ALL">All Biomes</option>
+        <option value="Jungle">Jungle</option>
+        <option value="Archipelago">Archipelago</option>
+        <option value="Ghibli Land">Ghibli Land</option>
+        <option value="Plains">Plains</option>
+        <option value="Mountains">Mountains</option>
+        <option value="Magical">Magical</option>
+      </select>
+    </div>
+
+    <div class="control-group">
+      <label for="asset-select">Select Asset</label>
+      <select id="asset-select">
+        <!-- Filled programmatically -->
+      </select>
+    </div>
+
+    <div class="control-group">
+      <label>Wind Animation</label>
+      <button id="wind-toggle" class="active">WIND: ON</button>
+    </div>
+
+    <div class="control-group">
+      <label>Shader Look</label>
+      <button id="shader-toggle" class="active">TOON SHADER</button>
+    </div>
+
+    <div id="stats-box">
+      <div>Renderer: WebGL2</div>
+      <div id="stat-triangles">Triangles: 0</div>
+      <div id="stat-geometries">Geometries: 0</div>
+    </div>
+
+    <div id="asset-info">
+      <div id="info-badge-container"></div>
+      <div id="info-name" style="font-weight: bold; color: #ffffff; margin-bottom: 6px;">Asset Name</div>
+      <div id="info-desc">Select an asset from the list to view its description.</div>
+    </div>
+  </div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { AssetRegistry, createToonMesh } from './procedural-assets.js';
+
+    // --- SETUP SCENE, CAMERA, RENDERER ---
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x1a1a1a); // Flat neutral studio background
+
+    const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
+    camera.position.set(0, 3, 7.5);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    container.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.maxPolarAngle = Math.PI / 2 - 0.02; // Don't go under ground
+    controls.minDistance = 2;
+    controls.maxDistance = 20;
+    controls.target.set(0, 1.8, 0);
+
+    // --- GLOBAL UNIFORMS FOR CUSTOM SHADERS ---
+    const globalUniforms = {
+      uTime: { value: 0 },
+      uWindEnabled: { value: 1.0 },
+      uToonEnabled: { value: 1.0 },
+      uWindSwayStrength: { value: 1.0 },
+      uLightDir: { value: new THREE.Vector3(1, 1.5, 0.8).normalize() },
+      uLightColor: { value: new THREE.Color(1.0, 0.98, 0.95) },
+      uAmbientColor: { value: new THREE.Color(0.25, 0.25, 0.28) }
+    };
+
+    // --- LIGHTS (Used for standard references/helpers, shaders read uLightDir) ---
+    const dirLight = new THREE.DirectionalLight(0xfff8ee, 1.0);
+    dirLight.position.set(5, 7.5, 4);
+    scene.add(dirLight);
+
+    const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+    scene.add(ambientLight);
+
+    // --- STUDIO PEDESTAL ---
+    const pedestalGeo = new THREE.CylinderGeometry(2.2, 2.3, 0.2, 32);
+    pedestalGeo.translate(0, -0.1, 0);
+    const pedestalMesh = createToonMesh(pedestalGeo, 0x222222, 0.015, globalUniforms);
+    pedestalMesh.material.uniforms.uWindSwayStrength.value = 0.0;
+    if (pedestalMesh.children[0]) {
+      pedestalMesh.children[0].material.uniforms.uWindSwayStrength.value = 0.0;
+    }
+    scene.add(pedestalMesh);
+
+    // --- STATE VARIABLES ---
+    let activeAssetGroup = null;
+    let clock = new THREE.Clock();
+
+    // --- UI CONTROLS ---
+    const biomeFilter = document.getElementById('biome-filter');
+    const assetSelect = document.getElementById('asset-select');
+    const windToggle = document.getElementById('wind-toggle');
+    const shaderToggle = document.getElementById('shader-toggle');
+    
+    const infoBadgeContainer = document.getElementById('info-badge-container');
+    const infoName = document.getElementById('info-name');
+    const infoDesc = document.getElementById('info-desc');
+    
+    const statTriangles = document.getElementById('stat-triangles');
+    const statGeometries = document.getElementById('stat-geometries');
+
+    // Populate dropdown based on biome filter
+    function populateAssetDropdown() {
+      const selectedBiome = biomeFilter.value;
+      assetSelect.innerHTML = '';
+
+      AssetRegistry.forEach(asset => {
+        if (selectedBiome === 'ALL' || asset.biome === selectedBiome) {
+          const opt = document.createElement('option');
+          opt.value = asset.id;
+          opt.textContent = `${asset.isFlagship ? '★ ' : ''}${asset.name} (${asset.biome})`;
+          assetSelect.appendChild(opt);
+        }
+      });
+
+      // Load selected asset
+      loadSelectedAsset();
+    }
+
+    // Load active asset model
+    function loadSelectedAsset() {
+      const assetId = assetSelect.value;
+      if (!assetId) return;
+
+      const assetConfig = AssetRegistry.find(a => a.id === assetId);
+      if (!assetConfig) return;
+
+      // 1. Clean up old model to prevent memory leaks
+      if (activeAssetGroup) {
+        scene.remove(activeAssetGroup);
+        disposeGroup(activeAssetGroup);
+        activeAssetGroup = null;
+      }
+
+      // 2. Generate and add new model
+      try {
+        activeAssetGroup = assetConfig.generate(globalUniforms);
+        scene.add(activeAssetGroup);
+      } catch (err) {
+        console.error('Error generating asset:', err);
+      }
+
+      // 3. Update info card
+      infoName.textContent = assetConfig.name;
+      infoBadgeContainer.innerHTML = '';
+      if (assetConfig.isFlagship) {
+        const badge = document.createElement('span');
+        badge.className = 'flagship-badge';
+        badge.textContent = 'Gold Standard Flagship';
+        infoBadgeContainer.appendChild(badge);
+        
+        if (assetConfig.id === 'ghibli-summer-oak') {
+          infoDesc.textContent = 'A towering Ghibli-style summer oak. Features a thick, organic cylinder-merged trunk with flared root buttresses, branching splits, and fluffy low-poly dodecahedron canopies with programmatically outward-averaged vertex normals to achieve smooth cel-shaded rendering.';
+        } else if (assetConfig.id === 'windswept-pine') {
+          infoDesc.textContent = 'A weathered pine displaying directional growth from prevailing ocean winds. Features an angled, curved trunk leaning leeward, and flat horizontal foliage pads clumped on the leeward side using normal-averaging to simulate stylized puffball shading.';
+        } else if (assetConfig.id === 'wizard-spire') {
+          infoDesc.textContent = 'A whimsical magical spire structure. Features a tapered stone tower base with glowing inset windows, a steep conical roof with offset, shingled tiling layers, and a detached stone ring that floats and rotates around its midsection.';
+        }
+      } else {
+        infoDesc.textContent = `Structured placeholder for ${assetConfig.name}. Biome: ${assetConfig.biome}. Falls back to a color-coded foliage box and simple trunk.`;
+      }
+
+      // 4. Reset controls/viewer target
+      controls.target.set(0, 1.8, 0);
+
+      // 5. Update polycounts
+      updateStats();
+    }
+
+    // Cleanup resources
+    function disposeGroup(group) {
+      group.traverse(child => {
+        if (child.isMesh) {
+          if (child.geometry) {
+            child.geometry.dispose();
+          }
+          if (child.material) {
+            if (Array.isArray(child.material)) {
+              child.material.forEach(mat => mat.dispose());
+            } else {
+              child.material.dispose();
+            }
+          }
+        }
+      });
+    }
+
+    // Calculate scene statistics
+    function updateStats() {
+      let triangles = 0;
+      let geometries = 0;
+
+      if (activeAssetGroup) {
+        activeAssetGroup.traverse(child => {
+          if (child.isMesh) {
+            geometries++;
+            const geom = child.geometry;
+            if (geom.index) {
+              triangles += geom.index.count / 3;
+            } else if (geom.attributes.position) {
+              triangles += geom.attributes.position.count / 3;
+            }
+          }
+        });
+      }
+      statTriangles.textContent = `Triangles: ${Math.round(triangles)}`;
+      statGeometries.textContent = `Geometries: ${geometries}`;
+    }
+
+    // --- EVENT LISTENERS ---
+    biomeFilter.addEventListener('change', populateAssetDropdown);
+    assetSelect.addEventListener('change', loadSelectedAsset);
+
+    // Wind Toggle
+    let windEnabled = true;
+    windToggle.addEventListener('click', () => {
+      windEnabled = !windEnabled;
+      globalUniforms.uWindEnabled.value = windEnabled ? 1.0 : 0.0;
+      if (windEnabled) {
+        windToggle.textContent = 'WIND: ON';
+        windToggle.classList.add('active');
+      } else {
+        windToggle.textContent = 'WIND: OFF';
+        windToggle.classList.remove('active');
+      }
+    });
+
+    // Toon/Flat Toggle
+    let toonEnabled = true;
+    shaderToggle.addEventListener('click', () => {
+      toonEnabled = !toonEnabled;
+      globalUniforms.uToonEnabled.value = toonEnabled ? 1.0 : 0.0;
+      if (toonEnabled) {
+        shaderToggle.textContent = 'TOON SHADER';
+        shaderToggle.classList.add('active');
+      } else {
+        shaderToggle.textContent = 'FLAT COLOR';
+        shaderToggle.classList.remove('active');
+      }
+    });
+
+    // Resize handler
+    window.addEventListener('resize', () => {
+      camera.aspect = container.clientWidth / container.clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(container.clientWidth, container.clientHeight);
+    });
+
+    // --- ANIMATION LOOP ---
+    function animate() {
+      requestAnimationFrame(animate);
+
+      const time = clock.getElapsedTime();
+      globalUniforms.uTime.value = time;
+
+      // Animate active asset custom elements (like the Wizard Spire floating ring)
+      if (activeAssetGroup && activeAssetGroup.userData.floatingRing) {
+        const ring = activeAssetGroup.userData.floatingRing;
+        ring.rotation.y = time * 0.4;
+        ring.position.y = 1.8 + Math.sin(time * 1.5) * 0.12;
+      }
+
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    // Start UI
+    populateAssetDropdown();
+    animate();
+  </script>
+</body>
+</html>
