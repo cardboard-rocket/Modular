@@ -340,9 +340,7 @@ console.error = function(...args) {
     renderer.toneMappingExposure = 0.9;
     container.appendChild(renderer.domElement);
 
-    const renderTarget = new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight);
-    renderTarget.depthTexture = new THREE.DepthTexture();
-    const composer = new EffectComposer(renderer, renderTarget);
+    const composer = new EffectComposer(renderer);
     const renderPass = new RenderPass(scene, camera);
     composer.addPass(renderPass);
     const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.15, 0.6, 0.9);
@@ -351,16 +349,11 @@ console.error = function(...args) {
     const GhibliSummerShader = {
         uniforms: {
             tDiffuse: { value: null },
-            tDepth: { value: renderTarget.depthTexture },
             uWarmGold: { value: new THREE.Color(0xfffcf2) },
             uAzureShadow: { value: new THREE.Color(0xedfafc) },
             uSaturation: { value: 1.18 },
             uShimmerCol: { value: new THREE.Color(0.12, 0.09, 0.02) },
-            uVignette: { value: 0.14 },
-            uOutlineEnabled: { value: 1.0 },
-            uOutlineThickness: { value: 1.5 },
-            uOutlineColor: { value: new THREE.Color(0x000000) },
-            uResolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) }
+            uVignette: { value: 0.14 }
         },
         vertexShader: `
             varying vec2 vUv;
@@ -371,47 +364,16 @@ console.error = function(...args) {
         `,
         fragmentShader: `
             uniform sampler2D tDiffuse;
-            uniform sampler2D tDepth;
             uniform vec3 uWarmGold;
             uniform vec3 uAzureShadow;
             uniform float uSaturation;
             uniform vec3 uShimmerCol;
             uniform float uVignette;
-            uniform float uOutlineEnabled;
-            uniform float uOutlineThickness;
-            uniform vec3 uOutlineColor;
-            uniform vec2 uResolution;
             varying vec2 vUv;
 
             void main() {
                 vec4 texel = texture2D( tDiffuse, vUv );
                 vec3 col = texel.rgb;
-
-                if (uOutlineEnabled > 0.5) {
-                    float dVal = texture2D(tDepth, vUv).r;
-                    float thickness = uOutlineThickness * clamp(1.0 - pow(dVal, 25.0), 0.15, 1.0);
-                    float dx = thickness / uResolution.x;
-                    float dy = thickness / uResolution.y;
-                    
-                    float l00 = dot(texture2D(tDiffuse, vUv + vec2(-dx, -dy)).rgb, vec3(0.299, 0.587, 0.114));
-                    float l10 = dot(texture2D(tDiffuse, vUv + vec2(0.0, -dy)).rgb, vec3(0.299, 0.587, 0.114));
-                    float l20 = dot(texture2D(tDiffuse, vUv + vec2(dx, -dy)).rgb, vec3(0.299, 0.587, 0.114));
-                    
-                    float l01 = dot(texture2D(tDiffuse, vUv + vec2(-dx, 0.0)).rgb, vec3(0.299, 0.587, 0.114));
-                    float l21 = dot(texture2D(tDiffuse, vUv + vec2(dx, 0.0)).rgb, vec3(0.299, 0.587, 0.114));
-                    
-                    float l02 = dot(texture2D(tDiffuse, vUv + vec2(-dx, dy)).rgb, vec3(0.299, 0.587, 0.114));
-                    float l12 = dot(texture2D(tDiffuse, vUv + vec2(0.0, dy)).rgb, vec3(0.299, 0.587, 0.114));
-                    float l22 = dot(texture2D(tDiffuse, vUv + vec2(dx, dy)).rgb, vec3(0.299, 0.587, 0.114));
-                    
-                    float sobX = l00 + 2.0 * l01 + l02 - (l20 + 2.0 * l21 + l22);
-                    float sobY = l00 + 2.0 * l10 + l20 - (l02 + 2.0 * l12 + l22);
-                    float edge = sqrt(sobX * sobX + sobY * sobY);
-                    
-                    if (edge > 0.15) {
-                        col = mix(col, uOutlineColor, clamp(edge * 2.5, 0.0, 1.0));
-                    }
-                }
 
                 float lum = dot(col, vec3(0.299, 0.587, 0.114));
 
@@ -582,94 +544,20 @@ console.error = function(...args) {
         uSandColor: { value: customColors.sand }
     };
 
-    function makeMaterialToon(material, toonUniforms) {
-        const originalOnBeforeCompile = material.onBeforeCompile;
-        material.onBeforeCompile = (shader) => {
-            if (originalOnBeforeCompile) originalOnBeforeCompile(shader);
-            
-            shader.uniforms.uToonEnabled = toonUniforms.uToonEnabled;
-            shader.uniforms.uToonSteps = toonUniforms.uToonSteps;
-            shader.uniforms.uRimStrength = toonUniforms.uRimStrength;
-            shader.uniforms.uRimColor = toonUniforms.uRimColor;
 
-            if (toonUniforms.uTime) {
-                shader.uniforms.uTime = toonUniforms.uTime;
-                
-                shader.vertexShader = `
-                    uniform float uTime;
-                ` + shader.vertexShader;
-
-                shader.vertexShader = shader.vertexShader.replace(
-                    '#include <begin_vertex>',
-                    `#include <begin_vertex>
-                     #if defined( USE_COLOR )
-                         if (color.g > 0.45 && color.g > color.r) {
-                             float t = uTime * 1.6;
-                             float swayX = sin(t + position.y * 0.18) * 0.08 * max(0.0, position.y - 1.5);
-                             float swayZ = cos(t * 0.85 + position.x * 0.15) * 0.06 * max(0.0, position.y - 1.5);
-                             transformed.x += swayX;
-                             transformed.z += swayZ;
-                         }
-                     #endif
-                    `
-                );
-            }
-
-            shader.fragmentShader = `
-                uniform bool uToonEnabled;
-                uniform float uToonSteps;
-                uniform float uRimStrength;
-                uniform vec3 uRimColor;
-            ` + shader.fragmentShader;
-
-            if (shader.fragmentShader.includes('getGradientShading')) {
-                shader.fragmentShader = shader.fragmentShader.replace(
-                    'float getGradientShading( float dotNL ) {',
-                    `float getGradientShading( float dotNL ) {
-                         if (uToonEnabled) {
-                             if (dotNL > 0.5) {
-                                 return 1.0;
-                             } else if (dotNL > 0.15) {
-                                 return 0.55;
-                             } else {
-                                 return 0.15;
-                             }
-                         }
-                    `
-                );
-            }
-
-            shader.fragmentShader = shader.fragmentShader.replace(
-                '#include <tonemapping_fragment>',
-                `#include <tonemapping_fragment>
-                 if (uToonEnabled) {
-                     vec3 normalVec = normalize(vNormal);
-                     vec3 viewVec = normalize(vViewPosition);
-                     float rim = 1.0 - clamp(dot(normalVec, viewVec), 0.0, 1.0);
-                     rim = pow(rim, 4.0);
-                     gl_FragColor.rgb += uRimColor * rim * uRimStrength;
-                 }
-                `
-            );
-        };
-    }
 
     const matRock = new THREE.MeshToonMaterial({ color: 0xffffff, gradientMap, dithering: true });
     const matBush = new THREE.MeshToonMaterial({ color: 0x48a868, gradientMap, dithering: true });
     const matCloud = new THREE.MeshToonMaterial({ color: 0xfffaec, transparent: true, opacity: 0.65, gradientMap, dithering: true });
     const matWispyCloud = new THREE.MeshToonMaterial({ color: 0xffffff, transparent: true, opacity: 0.42, gradientMap, dithering: true });
     
-    makeMaterialToon(matRock, treeToonUniforms);
-    makeMaterialToon(matBush, treeToonUniforms);
-    makeMaterialToon(matCloud, treeToonUniforms);
-    makeMaterialToon(matWispyCloud, treeToonUniforms);
-
     const terrainMat = new THREE.MeshToonMaterial({ 
         vertexColors: true, 
         gradientMap,
         dithering: true
     });
     
+    // Shader injection for perfect shoreline calculations
     terrainMat.onBeforeCompile = (shader) => {
         shader.vertexShader = `
             varying vec3 vWorldPos;
@@ -679,67 +567,9 @@ console.error = function(...args) {
             `#include <worldpos_vertex>
              vWorldPos = (modelMatrix * vec4(transformed, 1.0)).xyz;`
         );
-
-        shader.uniforms.uToonEnabled = terrainToonUniforms.uToonEnabled;
-        shader.uniforms.uToonSteps = terrainToonUniforms.uToonSteps;
-        shader.uniforms.uRimStrength = terrainToonUniforms.uRimStrength;
-        shader.uniforms.uRimColor = terrainToonUniforms.uRimColor;
-
-        shader.uniforms.uCustomColorsEnabled = terrainColorUniforms.uCustomColorsEnabled;
-        shader.uniforms.uGrassColor = terrainColorUniforms.uGrassColor;
-        shader.uniforms.uDirtColor = terrainColorUniforms.uDirtColor;
-        shader.uniforms.uSandColor = terrainColorUniforms.uSandColor;
-
-        if (shader.fragmentShader.includes('getGradientShading')) {
-            shader.fragmentShader = shader.fragmentShader.replace(
-                'float getGradientShading( float dotNL ) {',
-                `uniform float uToonEnabled;
-                 uniform float uToonSteps;
-                 float getGradientShading( float dotNL ) {
-                     if (uToonEnabled > 0.5) {
-                         float steps = max(1.0, uToonSteps);
-                         return clamp(ceil(dotNL * steps) / steps, 0.05, 1.0);
-                     }
-                `
-            );
-        }
-
-        shader.fragmentShader = `
-            uniform float uCustomColorsEnabled;
-            uniform vec3 uGrassColor;
-            uniform vec3 uDirtColor;
-            uniform vec3 uSandColor;
-        ` + shader.fragmentShader;
-
-        shader.fragmentShader = shader.fragmentShader.replace(
-            `#include <color_fragment>`,
-            `#include <color_fragment>
-             if (uCustomColorsEnabled > 0.5) {
-                 float isGrass = step(0.1, diffuseColor.g - max(diffuseColor.r, diffuseColor.b));
-                 float isSand = step(0.7, diffuseColor.r) * step(0.6, diffuseColor.g) * step(0.4, diffuseColor.r - diffuseColor.b);
-                 float isDirt = 1.0 - clamp(isGrass + isSand, 0.0, 1.0);
-                 
-                 diffuseColor.rgb = uGrassColor * isGrass + uSandColor * isSand + uDirtColor * isDirt;
-             }
-            `
-        );
-
-        shader.fragmentShader = shader.fragmentShader.replace(
-            '#include <tonemapping_fragment>',
-            `#include <tonemapping_fragment>
-             if (uToonEnabled > 0.5) {
-                 vec3 normalVec = normalize(vNormal);
-                 vec3 viewVec = normalize(vViewPosition);
-                 float rim = 1.0 - clamp(dot(normalVec, viewVec), 0.0, 1.0);
-                 rim = pow(rim, 4.0);
-                 gl_FragColor.rgb += uRimColor * rim * uRimStrength;
-             }
-            `
-        );
     };
 
     const matTree = new THREE.MeshToonMaterial({ vertexColors: true, gradientMap, dithering: true });
-    makeMaterialToon(matTree, treeToonUniforms);
 
 
 
@@ -1621,10 +1451,6 @@ console.error = function(...args) {
     waterMat.onBeforeCompile = (shader) => {
         shader.uniforms.uTime = waterUniforms.uTime;
         shader.uniforms.uForcedZone = waterUniforms.uForcedZone;
-        shader.uniforms.uToonEnabled = waterToonUniforms.uToonEnabled;
-        shader.uniforms.uToonSteps = waterToonUniforms.uToonSteps;
-        shader.uniforms.uRimStrength = waterToonUniforms.uRimStrength;
-        shader.uniforms.uRimColor = waterToonUniforms.uRimColor;
         
         shader.vertexShader = `
             varying vec3 vWorldPos;
@@ -1639,10 +1465,6 @@ console.error = function(...args) {
         shader.fragmentShader = `
             uniform float uTime;
             uniform float uForcedZone;
-            uniform float uToonEnabled;
-            uniform float uToonSteps;
-            uniform float uRimStrength;
-            uniform vec3 uRimColor;
             varying vec3 vWorldPos;
 
             // --- Simplex noise (compact GLSL) ---
@@ -1818,21 +1640,6 @@ console.error = function(...args) {
 
              // Apply base painted water + crisp white foam lines
              diffuseColor.rgb = mix(waterGrad, vec3(0.98, 0.99, 1.0), totalFoam);
-
-             // Custom Toon / Cel quantization for water
-             if (uToonEnabled > 0.5) {
-                 float steps = max(1.0, uToonSteps);
-                 float l = dot(diffuseColor.rgb, vec3(0.299, 0.587, 0.114));
-                 float ql = ceil(l * steps) / steps;
-                 diffuseColor.rgb = diffuseColor.rgb * (ql / max(0.01, l));
-                 
-                 // Apply water rim light
-                 vec3 normalVec = normalize(vNormal);
-                 vec3 viewVec = normalize(vViewPosition);
-                 float rim = 1.0 - clamp(dot(normalVec, viewVec), 0.0, 1.0);
-                 rim = pow(rim, 4.0);
-                 diffuseColor.rgb += uRimColor * rim * uRimStrength;
-             }
             `
         );
     };
@@ -2565,9 +2372,6 @@ console.error = function(...args) {
                 if (child.isMesh) {
                     child.castShadow = true;
                     child.receiveShadow = true;
-                    if (child.material) {
-                        makeMaterialToon(child.material, treeToonUniforms);
-                    }
                 }
             });
             kikiModel.rotation.y = Math.PI;
