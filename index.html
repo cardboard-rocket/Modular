@@ -2936,6 +2936,7 @@ console.error = function(...args) {
         requestAnimationFrame(animate);
         let dt = Math.min(clock.getDelta(), 0.1);
         const time = clock.getElapsedTime();
+        const isBoosting = keys.shift || touchState.boost;
         
         if (whaleMixer && currentCharacter === 'whale') {
             whaleMixer.update(dt);
@@ -3046,7 +3047,6 @@ console.error = function(...args) {
             starField.position.copy(cameraBase.position);
         } else {
             const isBraking = keys.space || touchState.brake;
-            const isBoosting = keys.shift || touchState.boost;
 
             const targetSpeed = isBraking ? 0.0 : (isBoosting ? 250.0 : 18.0);
             velocity += (targetSpeed - velocity) * dt * (isBraking ? 3.0 : (isBoosting ? 1.5 : 1.0));
