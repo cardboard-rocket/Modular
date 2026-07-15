@@ -164,6 +164,7 @@ console.error = function(...args) {
       <button id="fullscreen-toggle">⛶ Fullscreen</button>
     </div>
   </div>
+  <canvas id="minimap-canvas" width="160" height="160" style="position: fixed; top: 16px; right: 16px; border: 1px solid rgba(255, 255, 255, 0.2); background: rgba(0,0,0,0.5); z-index: 9999; display: block;"></canvas>
   <div id="fps-counter" style="position: fixed; top: 16px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.5); color: #fff; padding: 4px 8px; border-radius: 4px; font-family: monospace; font-size: 12px; z-index: 10; pointer-events: none;">0 FPS</div>
 
   <div id="touch-controls">
@@ -235,9 +236,11 @@ console.error = function(...args) {
     }
 
     const splatGrid = new Map();
+    const carveGrid = new Map();
     const SPLAT_CELL_SIZE = 15;
-    let brushMode = 'rotate'; // 'rotate', 'write', 'erase'
+    let brushMode = 'rotate'; // 'rotate', 'write', 'erase', 'water'
     let brushSize = 40;
+    let isMinimapVisible = true;
 
     let isEditorMode = false;
     let editorFlySpeedMultiplier = 1.0;
@@ -571,20 +574,50 @@ console.error = function(...args) {
         return 5.0;
     }
 
+    function getCarveValue(x, z) {
+        if (carveGrid.size === 0) return 0.0;
+        const cellSize = SPLAT_CELL_SIZE;
+        const cellX = Math.floor(x / cellSize);
+        const cellZ = Math.floor(z / cellSize);
+        
+        let totalVal = 0;
+        let totalWeight = 0;
+        
+        for (let dx = -1; dx <= 2; dx++) {
+            for (let dz = -1; dz <= 2; dz++) {
+                const cx = cellX + dx;
+                const cz = cellZ + dz;
+                const cellKey = cx + '_' + cz;
+                const val = carveGrid.get(cellKey);
+                if (val !== undefined) {
+                    const cellWorldX = cx * cellSize;
+                    const cellWorldZ = cz * cellSize;
+                    const distSq = (x - cellWorldX) * (x - cellWorldX) + (z - cellWorldZ) * (z - cellWorldZ);
+                    const weight = 1.0 / (distSq + 1.0);
+                    totalVal += val * weight;
+                    totalWeight += weight;
+                }
+            }
+        }
+        return totalWeight > 0 ? (totalVal / totalWeight) : 0.0;
+    }
+
     function terrainHeightJS(x, z) {
         let zone = getZone(x, z);
         let lowerZone = Math.floor(zone);
         let upperZone = Math.ceil(zone);
 
+        let baseH = 0;
         if (lowerZone === upperZone) {
-            return biomes[lowerZone].getHeight(x, z, snoise, zone);
+            baseH = biomes[lowerZone].getHeight(x, z, snoise, zone);
         } else {
             let t = zone - lowerZone;
             t = t * t * (3.0 - 2.0 * t); // smoothstep
             let h1 = biomes[lowerZone].getHeight(x, z, snoise, zone);
             let h2 = biomes[upperZone].getHeight(x, z, snoise, zone);
-            return h1 * (1.0 - t) + h2 * t;
+            baseH = h1 * (1.0 - t) + h2 * t;
         }
+        return baseH - getCarveValue(x, z);
     }
 
 
@@ -677,6 +710,11 @@ console.error = function(...args) {
                 tempColor.lerp(new THREE.Color(0xa855f7), 0.35);
             } else if (splatVal === -1.0) {
                 tempColor.lerp(new THREE.Color(0xf43f5e), 0.35);
+            }
+
+            const carveVal = getCarveValue(worldX, worldZ);
+            if (carveVal > 0.0) {
+                tempColor.lerp(new THREE.Color(0x0284c7), Math.min(0.85, carveVal * 0.15));
             }
 
             colors.setXYZ(i, tempColor.r, tempColor.g, tempColor.b);
@@ -2528,6 +2566,14 @@ console.error = function(...args) {
                 hToggle.style.opacity = '1';
             }
         }
+
+        if(e.key.toLowerCase() === 'm') {
+            isMinimapVisible = !isMinimapVisible;
+            const minimapEl = document.getElementById('minimap-canvas');
+            if (minimapEl) {
+                minimapEl.style.display = isMinimapVisible ? 'block' : 'none';
+            }
+        }
     });
 
     window.addEventListener('keyup', e => {
@@ -2765,7 +2811,6 @@ console.error = function(...args) {
         if (intersects.length > 0) {
             const hitPoint = intersects[0].point;
             const radius = brushSize;
-            const value = (brushMode === 'write') ? 1.0 : -1.0;
 
             const minX = hitPoint.x - radius;
             const maxX = hitPoint.x + radius;
@@ -2773,19 +2818,46 @@ console.error = function(...args) {
             const maxZ = hitPoint.z + radius;
 
             let gridChanged = false;
-            for (let x = minX; x <= maxX; x += SPLAT_CELL_SIZE) {
-                for (let z = minZ; z <= maxZ; z += SPLAT_CELL_SIZE) {
-                    const dx = x - hitPoint.x;
-                    const dz = z - hitPoint.z;
-                    if (dx*dx + dz*dz <= radius*radius) {
-                        const cellKey = Math.floor(x / SPLAT_CELL_SIZE) + '_' + Math.floor(z / SPLAT_CELL_SIZE);
-                        if (splatGrid.get(cellKey) !== value) {
-                            splatGrid.set(cellKey, value);
-                            gridChanged = true;
+
+            if (brushMode === 'water') {
+                for (let x = minX; x <= maxX; x += SPLAT_CELL_SIZE) {
+                    for (let z = minZ; z <= maxZ; z += SPLAT_CELL_SIZE) {
+                        const dx = x - hitPoint.x;
+                        const dz = z - hitPoint.z;
+                        if (dx*dx + dz*dz <= radius*radius) {
+                            const cellKey = Math.floor(x / SPLAT_CELL_SIZE) + '_' + Math.floor(z / SPLAT_CELL_SIZE);
+                            const currentCarve = carveGrid.get(cellKey) || 0.0;
+                            // Retrieve uncarved base height
+                            const baseH = terrainHeightJS(x, z) + currentCarve;
+                            // Target height below sea level (2.4m), let's target 1.0m
+                            const targetCarve = Math.max(0.0, baseH - 1.0);
+                            
+                            // Lerp to smooth the carving process
+                            const newCarve = THREE.MathUtils.lerp(currentCarve, targetCarve, 0.45);
+                            if (Math.abs(newCarve - currentCarve) > 0.01) {
+                                carveGrid.set(cellKey, newCarve);
+                                gridChanged = true;
+                            }
+                        }
+                    }
+                }
+            } else {
+                const value = (brushMode === 'write') ? 1.0 : -1.0;
+                for (let x = minX; x <= maxX; x += SPLAT_CELL_SIZE) {
+                    for (let z = minZ; z <= maxZ; z += SPLAT_CELL_SIZE) {
+                        const dx = x - hitPoint.x;
+                        const dz = z - hitPoint.z;
+                        if (dx*dx + dz*dz <= radius*radius) {
+                            const cellKey = Math.floor(x / SPLAT_CELL_SIZE) + '_' + Math.floor(z / SPLAT_CELL_SIZE);
+                            if (splatGrid.get(cellKey) !== value) {
+                                splatGrid.set(cellKey, value);
+                                gridChanged = true;
+                            }
                         }
                     }
                 }
             }
+
             if (gridChanged) {
                 const centerX = isEditorMode ? cameraBase.position.x : playerGrp.position.x;
                 const centerZ = isEditorMode ? cameraBase.position.z : playerGrp.position.z;
@@ -3260,6 +3332,86 @@ console.error = function(...args) {
         } else {
             renderer.render(scene, camera);
         }
+        updateMinimap();
+    }
+
+    let lastMinimapUpdateTime = 0;
+    const minimapCanvas = document.getElementById('minimap-canvas');
+    const minimapCtx = minimapCanvas ? minimapCanvas.getContext('2d') : null;
+    
+    function updateMinimap() {
+        if (!isMinimapVisible || !minimapCanvas || !minimapCtx) return;
+        
+        const now = performance.now();
+        if (now - lastMinimapUpdateTime < 150) return; // Limit to ~6 FPS
+        lastMinimapUpdateTime = now;
+        
+        const centerX = isEditorMode ? cameraBase.position.x : playerGrp.position.x;
+        const centerZ = isEditorMode ? cameraBase.position.z : playerGrp.position.z;
+        
+        const width = minimapCanvas.width;
+        const height = minimapCanvas.height;
+        const imgData = minimapCtx.createImageData(width, height);
+        
+        const scale = 8.0;
+        
+        for (let py = 0; py < height; py++) {
+            for (let px = 0; px < width; px++) {
+                const worldX = centerX + (px - width / 2) * scale;
+                const worldZ = centerZ + (py - height / 2) * scale;
+                
+                const h = terrainHeightJS(worldX, worldZ);
+                const zone = getZone(worldX, worldZ);
+                
+                let r = 0, g = 0, b = 0;
+                
+                if (h < 2.35) {
+                    r = 30; g = 100; b = 200;
+                } else {
+                    if (zone < 1.0) {
+                        r = 40; g = 130; b = 60;
+                    } else if (zone < 2.0) {
+                        r = 100; g = 180; b = 120;
+                    } else if (zone < 3.0) {
+                        r = 120; g = 210; b = 70;
+                    } else if (zone < 4.0) {
+                        r = 215; g = 185; b = 110;
+                    } else if (zone < 5.0) {
+                        if (h > 65.0) {
+                            r = 240; g = 240; b = 245;
+                        } else {
+                            r = 100; g = 110; b = 120;
+                        }
+                    } else {
+                        r = 150; g = 60; b = 180;
+                    }
+                }
+                
+                const idx = (px + py * width) * 4;
+                imgData.data[idx] = r;
+                imgData.data[idx+1] = g;
+                imgData.data[idx+2] = b;
+                imgData.data[idx+3] = 255;
+            }
+        }
+        
+        minimapCtx.putImageData(imgData, 0, 0);
+        
+        const cx = width / 2;
+        const cy = height / 2;
+        const facingAngle = isEditorMode ? cameraPivot.rotation.y : currentYaw;
+        
+        minimapCtx.fillStyle = '#ff3b30';
+        minimapCtx.beginPath();
+        minimapCtx.arc(cx, cy, 4, 0, Math.PI * 2);
+        minimapCtx.fill();
+        
+        minimapCtx.strokeStyle = '#ffffff';
+        minimapCtx.lineWidth = 2;
+        minimapCtx.beginPath();
+        minimapCtx.moveTo(cx, cy);
+        minimapCtx.lineTo(cx - Math.sin(facingAngle) * 12, cy - Math.cos(facingAngle) * 12);
+        minimapCtx.stroke();
     }
 
     window.addEventListener('resize', () => {
@@ -3329,6 +3481,7 @@ console.error = function(...args) {
         setBrushSize: (size) => { brushSize = size; },
         clearSplatGrid: () => {
             splatGrid.clear();
+            carveGrid.clear();
             const centerX = isEditorMode ? cameraBase.position.x : playerGrp.position.x;
             const centerZ = isEditorMode ? cameraBase.position.z : playerGrp.position.z;
             updateTerrainGeometry(centerX, centerZ);
