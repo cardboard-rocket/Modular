@@ -574,6 +574,10 @@ console.error = function(...args) {
         return 5.0;
     }
 
+    /**
+     * Calculates the interpolated height subtraction depth for water and river carving
+     * using distance-weighted averaging of adjacent paint cells.
+     */
     function getCarveValue(x, z) {
         if (carveGrid.size === 0) return 0.0;
         const cellSize = SPLAT_CELL_SIZE;
