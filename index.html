@@ -615,12 +615,17 @@ console.error = function(...args) {
                 );
             }
 
+            shader.fragmentShader = `
+                uniform float uToonEnabled;
+                uniform float uToonSteps;
+                uniform float uRimStrength;
+                uniform vec3 uRimColor;
+            ` + shader.fragmentShader;
+
             if (shader.fragmentShader.includes('getGradientShading')) {
                 shader.fragmentShader = shader.fragmentShader.replace(
                     'float getGradientShading( float dotNL ) {',
-                    `uniform float uToonEnabled;
-                     uniform float uToonSteps;
-                     float getGradientShading( float dotNL ) {
+                    `float getGradientShading( float dotNL ) {
                          if (uToonEnabled > 0.5) {
                              if (dotNL > 0.5) {
                                  return 1.0;
