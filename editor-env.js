@@ -550,15 +550,15 @@ export function initEditor(options) {
 
     // SECTION 3: Toon Shader Settings Listeners
     checkToonTerrain.addEventListener('change', () => {
-        terrainToonUniforms.uToonEnabled.value = checkToonTerrain.checked ? 1.0 : 0.0;
+        terrainToonUniforms.uToonEnabled.value = checkToonTerrain.checked;
     });
 
     checkToonTrees.addEventListener('change', () => {
-        treeToonUniforms.uToonEnabled.value = checkToonTrees.checked ? 1.0 : 0.0;
+        treeToonUniforms.uToonEnabled.value = checkToonTrees.checked;
     });
 
     checkToonWater.addEventListener('change', () => {
-        waterToonUniforms.uToonEnabled.value = checkToonWater.checked ? 1.0 : 0.0;
+        waterToonUniforms.uToonEnabled.value = checkToonWater.checked;
     });
 
     sliderToonSteps.addEventListener('input', () => {

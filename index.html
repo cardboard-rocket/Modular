@@ -544,14 +544,14 @@ console.error = function(...args) {
     const sharedTimeUniform = { value: 0.0 };
 
     const terrainToonUniforms = {
-        uToonEnabled: { value: 1.0 },
+        uToonEnabled: { value: true },
         uToonSteps: { value: 3.0 },
         uRimStrength: { value: 0.35 },
         uRimColor: { value: new THREE.Color(0xffffff) }
     };
     
     const treeToonUniforms = {
-        uToonEnabled: { value: 1.0 },
+        uToonEnabled: { value: true },
         uToonSteps: { value: 3.0 },
         uRimStrength: { value: 0.35 },
         uRimColor: { value: new THREE.Color(0xffffff) },
@@ -559,7 +559,7 @@ console.error = function(...args) {
     };
 
     const waterToonUniforms = {
-        uToonEnabled: { value: 1.0 },
+        uToonEnabled: { value: true },
         uToonSteps: { value: 3.0 },
         uRimStrength: { value: 0.35 },
         uRimColor: { value: new THREE.Color(0xffffff) }
@@ -616,7 +616,7 @@ console.error = function(...args) {
             }
 
             shader.fragmentShader = `
-                uniform float uToonEnabled;
+                uniform bool uToonEnabled;
                 uniform float uToonSteps;
                 uniform float uRimStrength;
                 uniform vec3 uRimColor;
@@ -626,7 +626,7 @@ console.error = function(...args) {
                 shader.fragmentShader = shader.fragmentShader.replace(
                     'float getGradientShading( float dotNL ) {',
                     `float getGradientShading( float dotNL ) {
-                         if (uToonEnabled > 0.5) {
+                         if (uToonEnabled) {
                              if (dotNL > 0.5) {
                                  return 1.0;
                              } else if (dotNL > 0.15) {
@@ -642,7 +642,7 @@ console.error = function(...args) {
             shader.fragmentShader = shader.fragmentShader.replace(
                 '#include <tonemapping_fragment>',
                 `#include <tonemapping_fragment>
-                 if (uToonEnabled > 0.5) {
+                 if (uToonEnabled) {
                      vec3 normalVec = normalize(vNormal);
                      vec3 viewVec = normalize(vViewPosition);
                      float rim = 1.0 - clamp(dot(normalVec, viewVec), 0.0, 1.0);
