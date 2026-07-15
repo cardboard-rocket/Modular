@@ -3020,11 +3020,15 @@ console.error = function(...args) {
         }
 
         let oldY = playerGrp.position.y;
+        const centerX = isEditorMode ? cameraBase.position.x : playerGrp.position.x;
+        const centerY = isEditorMode ? cameraBase.position.y : playerGrp.position.y;
+        const centerZ = isEditorMode ? cameraBase.position.z : playerGrp.position.z;
+        const centerPos = isEditorMode ? cameraBase.position : playerGrp.position;
+        const groundY = terrainHeightJS(centerX, centerZ);
 
         if (isEditorMode) {
             velocity = 0;
             
-            const groundY = terrainHeightJS(cameraBase.position.x, cameraBase.position.z);
             const altitude = Math.max(1, cameraBase.position.y - groundY);
             const baseFlySpeed = 50.0;
             const altitudeSpeedFactor = Math.max(1.0, altitude * 0.15);
@@ -3060,7 +3064,6 @@ console.error = function(...args) {
             };
             tickMovement(dt, inputState, playerGrp, velocity);
 
-            const groundY = terrainHeightJS(playerGrp.position.x, playerGrp.position.z);
             playerGrp.position.y = Math.min(Math.max(playerGrp.position.y, 18), 3500);
             
             cameraBase.position.lerp(playerGrp.position, dt * 7.0);
@@ -3096,11 +3099,6 @@ console.error = function(...args) {
         }
 
         playerVisuals.rotation.x = THREE.MathUtils.lerp(playerVisuals.rotation.x, 0, dt * 5.0);
-
-        const centerX = isEditorMode ? cameraBase.position.x : playerGrp.position.x;
-        const centerY = isEditorMode ? cameraBase.position.y : playerGrp.position.y;
-        const centerZ = isEditorMode ? cameraBase.position.z : playerGrp.position.z;
-        const centerPos = isEditorMode ? cameraBase.position : playerGrp.position;
 
         updateTerrainGeometry(centerX, centerZ);
         waterMesh.position.x = centerX;
