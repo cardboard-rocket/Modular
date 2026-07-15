@@ -340,7 +340,9 @@ console.error = function(...args) {
     renderer.toneMappingExposure = 0.9;
     container.appendChild(renderer.domElement);
 
-    const composer = new EffectComposer(renderer);
+    const renderTarget = new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight);
+    renderTarget.depthTexture = new THREE.DepthTexture();
+    const composer = new EffectComposer(renderer, renderTarget);
     const renderPass = new RenderPass(scene, camera);
     composer.addPass(renderPass);
     const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.15, 0.6, 0.9);
@@ -349,6 +351,7 @@ console.error = function(...args) {
     const GhibliSummerShader = {
         uniforms: {
             tDiffuse: { value: null },
+            tDepth: { value: renderTarget.depthTexture },
             uWarmGold: { value: new THREE.Color(0xfffcf2) },
             uAzureShadow: { value: new THREE.Color(0xedfafc) },
             uSaturation: { value: 1.18 },
@@ -368,6 +371,7 @@ console.error = function(...args) {
         `,
         fragmentShader: `
             uniform sampler2D tDiffuse;
+            uniform sampler2D tDepth;
             uniform vec3 uWarmGold;
             uniform vec3 uAzureShadow;
             uniform float uSaturation;
@@ -384,8 +388,10 @@ console.error = function(...args) {
                 vec3 col = texel.rgb;
 
                 if (uOutlineEnabled > 0.5) {
-                    float dx = uOutlineThickness / uResolution.x;
-                    float dy = uOutlineThickness / uResolution.y;
+                    float dVal = texture2D(tDepth, vUv).r;
+                    float thickness = uOutlineThickness * clamp(1.0 - pow(dVal, 25.0), 0.15, 1.0);
+                    float dx = thickness / uResolution.x;
+                    float dy = thickness / uResolution.y;
                     
                     float l00 = dot(texture2D(tDiffuse, vUv + vec2(-dx, -dy)).rgb, vec3(0.299, 0.587, 0.114));
                     float l10 = dot(texture2D(tDiffuse, vUv + vec2(0.0, -dy)).rgb, vec3(0.299, 0.587, 0.114));
@@ -535,6 +541,8 @@ console.error = function(...args) {
     gradientMap.magFilter = THREE.NearestFilter;
     gradientMap.generateMipmaps = false;
 
+    const sharedTimeUniform = { value: 0.0 };
+
     const terrainToonUniforms = {
         uToonEnabled: { value: 1.0 },
         uToonSteps: { value: 3.0 },
@@ -546,7 +554,8 @@ console.error = function(...args) {
         uToonEnabled: { value: 1.0 },
         uToonSteps: { value: 3.0 },
         uRimStrength: { value: 0.35 },
-        uRimColor: { value: new THREE.Color(0xffffff) }
+        uRimColor: { value: new THREE.Color(0xffffff) },
+        uTime: sharedTimeUniform
     };
 
     const waterToonUniforms = {
@@ -562,7 +571,8 @@ console.error = function(...args) {
         dirt: new THREE.Color(0xdcb58a),
         sand: new THREE.Color(0xf2e1b8),
         noiseScale: 1.0,
-        heightMultiplier: 1.0
+        heightMultiplier: 1.0,
+        brushSoftness: 0.5
     };
 
     const terrainColorUniforms = {
@@ -582,6 +592,29 @@ console.error = function(...args) {
             shader.uniforms.uRimStrength = toonUniforms.uRimStrength;
             shader.uniforms.uRimColor = toonUniforms.uRimColor;
 
+            if (toonUniforms.uTime) {
+                shader.uniforms.uTime = toonUniforms.uTime;
+                
+                shader.vertexShader = `
+                    uniform float uTime;
+                ` + shader.vertexShader;
+
+                shader.vertexShader = shader.vertexShader.replace(
+                    '#include <begin_vertex>',
+                    `#include <begin_vertex>
+                     #if defined( USE_COLOR )
+                         if (color.g > 0.45 && color.g > color.r) {
+                             float t = uTime * 1.6;
+                             float swayX = sin(t + position.y * 0.18) * 0.08 * max(0.0, position.y - 1.5);
+                             float swayZ = cos(t * 0.85 + position.x * 0.15) * 0.06 * max(0.0, position.y - 1.5);
+                             transformed.x += swayX;
+                             transformed.z += swayZ;
+                         }
+                     #endif
+                    `
+                );
+            }
+
             if (shader.fragmentShader.includes('getGradientShading')) {
                 shader.fragmentShader = shader.fragmentShader.replace(
                     'float getGradientShading( float dotNL ) {',
@@ -589,8 +622,13 @@ console.error = function(...args) {
                      uniform float uToonSteps;
                      float getGradientShading( float dotNL ) {
                          if (uToonEnabled > 0.5) {
-                             float steps = max(1.0, uToonSteps);
-                             return clamp(ceil(dotNL * steps) / steps, 0.05, 1.0);
+                             if (dotNL > 0.5) {
+                                 return 1.0;
+                             } else if (dotNL > 0.15) {
+                                 return 0.55;
+                             } else {
+                                 return 0.15;
+                             }
                          }
                     `
                 );
@@ -958,156 +996,156 @@ console.error = function(...args) {
         geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
     }
 
-    // Tree 1: Tall Ghibli Pine with Pointed Tip
-    const t1Geos = [];
-    const t1Trunk = new THREE.CylinderGeometry(0.35, 0.55, 2.5, 6);
-    t1Trunk.translate(0, 1.25, 0);
-    applyColor(t1Trunk, 0x8a7560);
-    t1Geos.push(t1Trunk);
-    for(let i=0; i<4; i++) {
-        const cone = new THREE.ConeGeometry(2.5 - i*0.55, 2.8, 8);
-        cone.translate(0, 3.0 + i*1.7, 0);
-        applyColor(cone, 0x61c759);
-        t1Geos.push(cone);
+    function createOrganicTrunk(baseRadius, topRadius, height, colorHex, segments = 3) {
+        const geos = [];
+        const segHeight = height / segments;
+        let currentPos = new THREE.Vector3(0, 0, 0);
+        
+        const bendStrength = 0.05 + Math.random() * 0.06;
+        const bendAngle = Math.random() * Math.PI * 2;
+        const bendDir = new THREE.Vector3(Math.cos(bendAngle), 0, Math.sin(bendAngle)).multiplyScalar(bendStrength);
+
+        for (let i = 0; i < segments; i++) {
+            const rBase = THREE.MathUtils.lerp(baseRadius, topRadius, i / segments);
+            const rTop = THREE.MathUtils.lerp(baseRadius, topRadius, (i + 1) / segments);
+            const finalRBase = i === 0 ? rBase * 1.35 : rBase; // flared roots base
+            
+            const segGeo = new THREE.CylinderGeometry(rTop, finalRBase, segHeight, 5);
+            segGeo.translate(0, segHeight / 2, 0);
+            segGeo.rotateX(bendDir.x);
+            segGeo.rotateZ(bendDir.z);
+            segGeo.translate(currentPos.x, currentPos.y, currentPos.z);
+            
+            applyColor(segGeo, colorHex);
+            geos.push(segGeo);
+            
+            currentPos.y += segHeight;
+            currentPos.x += bendDir.z * segHeight * 0.35;
+            currentPos.z += -bendDir.x * segHeight * 0.35;
+        }
+        
+        // Add a tapered branch split near the top segment
+        if (segments >= 2) {
+            const branchGeo = new THREE.CylinderGeometry(topRadius * 0.5, topRadius, height * 0.3, 4);
+            branchGeo.translate(0, height * 0.15, 0);
+            branchGeo.rotateZ(0.45);
+            branchGeo.translate(currentPos.x, currentPos.y - height * 0.25, currentPos.z);
+            applyColor(branchGeo, colorHex);
+            geos.push(branchGeo);
+        }
+        
+        return BufferGeometryUtils.mergeGeometries(geos.map(g => g.index ? g.toNonIndexed() : g), false);
     }
-    const geoTree1 = BufferGeometryUtils.mergeGeometries(t1Geos.map(g => g.index ? g.toNonIndexed() : g), false);
-    geoTree1.scale(2.5, 2.5, 2.5);
+
+    function createFluffyCanopy(radius, height, colorHex, blobsCount = 5) {
+        const geos = [];
+        const mainCanopy = new THREE.DodecahedronGeometry(radius, 1);
+        mainCanopy.scale(1.0, 0.82, 1.0);
+        mainCanopy.translate(0, height, 0);
+        applyColor(mainCanopy, colorHex);
+        geos.push(mainCanopy);
+        
+        for (let i = 0; i < blobsCount - 1; i++) {
+            const blobRadius = radius * (0.65 + Math.random() * 0.3);
+            const blob = new THREE.DodecahedronGeometry(blobRadius, 0);
+            
+            const angle = (i / (blobsCount - 1)) * Math.PI * 2 + Math.random() * 0.4;
+            const dist = radius * (0.35 + Math.random() * 0.35);
+            const bx = Math.cos(angle) * dist;
+            const bz = Math.sin(angle) * dist;
+            const by = height + (Math.random() - 0.3) * radius * 0.45;
+            
+            blob.scale(1.0 + Math.random() * 0.15, 0.75 + Math.random() * 0.15, 1.0 + Math.random() * 0.15);
+            blob.translate(bx, by, bz);
+            applyColor(blob, colorHex);
+            geos.push(blob);
+        }
+        return BufferGeometryUtils.mergeGeometries(geos.map(g => g.index ? g.toNonIndexed() : g), false);
+    }
+
+    // Tree 1: Tall Ghibli Pine
+    const makeTree1 = (withTrunk) => {
+        const parts = [];
+        if (withTrunk) {
+            parts.push(createOrganicTrunk(0.4, 0.2, 3.8, 0x8a7560, 3));
+        }
+        parts.push(createFluffyCanopy(2.3, withTrunk ? 3.8 : 0.8, 0x61c759, 5));
+        const merged = BufferGeometryUtils.mergeGeometries(parts, false);
+        merged.scale(2.5, 2.5, 2.5);
+        return merged;
+    };
+    const geoTree1 = makeTree1(true);
+    const geoTreeG1 = makeTree1(false);
 
     // Tree 2: Wide Lush Cypress Pine
-    const t2Geos = [];
-    const t2Trunk = new THREE.CylinderGeometry(0.45, 0.75, 2.2, 6);
-    t2Trunk.translate(0, 1.1, 0);
-    applyColor(t2Trunk, 0x8a725a);
-    t2Geos.push(t2Trunk);
-    for(let i=0; i<4; i++) {
-        const cone = new THREE.ConeGeometry(3.1 - i*0.65, 2.9, 8);
-        cone.translate(0, 2.6 + i*1.6, 0);
-        applyColor(cone, 0x55b853);
-        t2Geos.push(cone);
-    }
-    const geoTree2 = BufferGeometryUtils.mergeGeometries(t2Geos.map(g => g.index ? g.toNonIndexed() : g), false);
-    geoTree2.scale(2.5, 2.5, 2.5);
+    const makeTree2 = (withTrunk) => {
+        const parts = [];
+        if (withTrunk) {
+            parts.push(createOrganicTrunk(0.5, 0.25, 3.2, 0x8a725a, 3));
+        }
+        parts.push(createFluffyCanopy(2.8, withTrunk ? 3.2 : 0.8, 0x55b853, 6));
+        const merged = BufferGeometryUtils.mergeGeometries(parts, false);
+        merged.scale(2.5, 2.5, 2.5);
+        return merged;
+    };
+    const geoTree2 = makeTree2(true);
+    const geoTreeG2 = makeTree2(false);
 
     // Tree 3: Slender Alpine Pine
-    const t3Geos = [];
-    const t3Trunk = new THREE.CylinderGeometry(0.35, 0.55, 3.5, 6);
-    t3Trunk.translate(0, 1.75, 0);
-    applyColor(t3Trunk, 0x8a725a);
-    t3Geos.push(t3Trunk);
-    for(let i=0; i<3; i++) {
-        const cone = new THREE.ConeGeometry(2.4 - i*0.65, 3.0, 8);
-        cone.translate(0, 4.0 + i*1.8, 0);
-        applyColor(cone, 0x5bb959);
-        t3Geos.push(cone);
-    }
-    const geoTree3 = BufferGeometryUtils.mergeGeometries(t3Geos.map(g => g.index ? g.toNonIndexed() : g), false);
-    geoTree3.scale(2.5, 2.5, 2.5);
+    const makeTree3 = (withTrunk) => {
+        const parts = [];
+        if (withTrunk) {
+            parts.push(createOrganicTrunk(0.4, 0.2, 4.6, 0x8a725a, 3));
+        }
+        parts.push(createFluffyCanopy(2.0, withTrunk ? 4.6 : 0.8, 0x5bb959, 5));
+        const merged = BufferGeometryUtils.mergeGeometries(parts, false);
+        merged.scale(2.5, 2.5, 2.5);
+        return merged;
+    };
+    const geoTree3 = makeTree3(true);
+    const geoTreeG3 = makeTree3(false);
 
     // Tree 4: Rich Emerald Conifer
-    const t4Geos = [];
-    const t4Trunk = new THREE.CylinderGeometry(0.35, 0.65, 3.0, 6);
-    t4Trunk.translate(0, 1.5, 0);
-    applyColor(t4Trunk, 0x6a5649);
-    t4Geos.push(t4Trunk);
-    for(let i=0; i<3; i++) {
-        const cone = new THREE.ConeGeometry(2.7 - i*0.7, 3.0, 8);
-        cone.translate(0, 3.6 + i*1.7, 0);
-        applyColor(cone, 0x3d9c5d);
-        t4Geos.push(cone);
-    }
-    const geoTree4 = BufferGeometryUtils.mergeGeometries(t4Geos.map(g => g.index ? g.toNonIndexed() : g), false);
-    geoTree4.scale(2.5, 2.5, 2.5);
+    const makeTree4 = (withTrunk) => {
+        const parts = [];
+        if (withTrunk) {
+            parts.push(createOrganicTrunk(0.4, 0.2, 3.2, 0x6a5649, 3));
+        }
+        parts.push(createFluffyCanopy(2.5, withTrunk ? 3.2 : 0.8, 0x3d9c5d, 5));
+        const merged = BufferGeometryUtils.mergeGeometries(parts, false);
+        merged.scale(2.5, 2.5, 2.5);
+        return merged;
+    };
+    const geoTree4 = makeTree4(true);
+    const geoTreeG4 = makeTree4(false);
 
-    // Tree 5: Majestic Layered Spruce (Cones only, no balls)
-    const t5Geos = [];
-    const t5Trunk = new THREE.CylinderGeometry(0.5, 0.9, 3.2, 6);
-    t5Trunk.translate(0, 1.6, 0);
-    applyColor(t5Trunk, 0x7a6f5e);
-    t5Geos.push(t5Trunk);
-    for(let i=0; i<4; i++) {
-        const cone = new THREE.ConeGeometry(3.3 - i*0.7, 2.8, 8);
-        cone.translate(0, 3.0 + i*1.6, 0);
-        applyColor(cone, 0x6bb846);
-        t5Geos.push(cone);
-    }
-    const geoTree5 = BufferGeometryUtils.mergeGeometries(t5Geos.map(g => g.index ? g.toNonIndexed() : g), false);
-    geoTree5.scale(2.5, 2.5, 2.5);
+    // Tree 5: Majestic Layered Spruce
+    const makeTree5 = (withTrunk) => {
+        const parts = [];
+        if (withTrunk) {
+            parts.push(createOrganicTrunk(0.55, 0.3, 3.4, 0x7a6f5e, 3));
+        }
+        parts.push(createFluffyCanopy(3.0, withTrunk ? 3.4 : 0.8, 0x6bb846, 6));
+        const merged = BufferGeometryUtils.mergeGeometries(parts, false);
+        merged.scale(2.5, 2.5, 2.5);
+        return merged;
+    };
+    const geoTree5 = makeTree5(true);
+    const geoTreeG5 = makeTree5(false);
 
-    // Tree 6: Autumn Larch Conifer (Cones only, no balls)
-    const t6Geos = [];
-    const t6Trunk = new THREE.CylinderGeometry(0.3, 0.6, 3, 6);
-    t6Trunk.translate(0, 1.5, 0);
-    applyColor(t6Trunk, 0xa87f5e);
-    t6Geos.push(t6Trunk);
-    for(let i=0; i<3; i++) {
-        const cone = new THREE.ConeGeometry(2.3 - i*0.65, 2.8, 8);
-        cone.translate(0, 3.2 + i*1.7, 0);
-        applyColor(cone, 0x6ed167);
-        t6Geos.push(cone);
-    }
-    const geoTree6 = BufferGeometryUtils.mergeGeometries(t6Geos.map(g => g.index ? g.toNonIndexed() : g), false);
-    geoTree6.scale(2.5, 2.5, 2.5);
-
-    // Grounded / No-Trunk Variations (60% of all trees for FPS & lush grounded forest floor)
-    const t1GeosG = [];
-    for(let i=0; i<4; i++) {
-        const cone = new THREE.ConeGeometry(2.6 - i*0.55, 2.8, 8);
-        cone.translate(0, 1.2 + i*1.7, 0);
-        applyColor(cone, 0x61c759);
-        t1GeosG.push(cone);
-    }
-    const geoTreeG1 = BufferGeometryUtils.mergeGeometries(t1GeosG.map(g => g.index ? g.toNonIndexed() : g), false);
-    geoTreeG1.scale(2.5, 2.5, 2.5);
-
-    const t2GeosG = [];
-    for(let i=0; i<4; i++) {
-        const cone = new THREE.ConeGeometry(3.2 - i*0.65, 2.9, 8);
-        cone.translate(0, 1.1 + i*1.6, 0);
-        applyColor(cone, 0x55b853);
-        t2GeosG.push(cone);
-    }
-    const geoTreeG2 = BufferGeometryUtils.mergeGeometries(t2GeosG.map(g => g.index ? g.toNonIndexed() : g), false);
-    geoTreeG2.scale(2.5, 2.5, 2.5);
-
-    const t3GeosG = [];
-    for(let i=0; i<3; i++) {
-        const cone = new THREE.ConeGeometry(2.5 - i*0.65, 3.0, 8);
-        cone.translate(0, 1.3 + i*1.8, 0);
-        applyColor(cone, 0x5bb959);
-        t3GeosG.push(cone);
-    }
-    const geoTreeG3 = BufferGeometryUtils.mergeGeometries(t3GeosG.map(g => g.index ? g.toNonIndexed() : g), false);
-    geoTreeG3.scale(2.5, 2.5, 2.5);
-
-    const t4GeosG = [];
-    for(let i=0; i<3; i++) {
-        const cone = new THREE.ConeGeometry(2.8 - i*0.7, 3.0, 8);
-        cone.translate(0, 1.3 + i*1.7, 0);
-        applyColor(cone, 0x3d9c5d);
-        t4GeosG.push(cone);
-    }
-    const geoTreeG4 = BufferGeometryUtils.mergeGeometries(t4GeosG.map(g => g.index ? g.toNonIndexed() : g), false);
-    geoTreeG4.scale(2.5, 2.5, 2.5);
-
-    const t5GeosG = [];
-    for(let i=0; i<4; i++) {
-        const cone = new THREE.ConeGeometry(3.4 - i*0.7, 2.8, 8);
-        cone.translate(0, 1.2 + i*1.6, 0);
-        applyColor(cone, 0x6bb846);
-        t5GeosG.push(cone);
-    }
-    const geoTreeG5 = BufferGeometryUtils.mergeGeometries(t5GeosG.map(g => g.index ? g.toNonIndexed() : g), false);
-    geoTreeG5.scale(2.5, 2.5, 2.5);
-
-    const t6GeosG = [];
-    for(let i=0; i<3; i++) {
-        const cone = new THREE.ConeGeometry(2.4 - i*0.65, 2.8, 8);
-        cone.translate(0, 1.2 + i*1.7, 0);
-        applyColor(cone, 0x6ed167);
-        t6GeosG.push(cone);
-    }
-    const geoTreeG6 = BufferGeometryUtils.mergeGeometries(t6GeosG.map(g => g.index ? g.toNonIndexed() : g), false);
-    geoTreeG6.scale(2.5, 2.5, 2.5);
+    // Tree 6: Autumn Larch Conifer
+    const makeTree6 = (withTrunk) => {
+        const parts = [];
+        if (withTrunk) {
+            parts.push(createOrganicTrunk(0.35, 0.18, 3.2, 0xa87f5e, 3));
+        }
+        parts.push(createFluffyCanopy(2.1, withTrunk ? 3.2 : 0.8, 0x6ed167, 4));
+        const merged = BufferGeometryUtils.mergeGeometries(parts, false);
+        merged.scale(2.5, 2.5, 2.5);
+        return merged;
+    };
+    const geoTree6 = makeTree6(true);
+    const geoTreeG6 = makeTree6(false);reeG6.scale(2.5, 2.5, 2.5);
 
     
     const wallColors = [0xfef0c8, 0xebaf9b, 0x82bfa8, 0x6e9ca8, 0xe1d9c1, 0xffffff, 0xcbe3d6]; 
@@ -1529,8 +1567,14 @@ console.error = function(...args) {
             if (idx < 12) {
                 tempTreeColor.setHex(treeGreenVariations[Math.floor(Math.random() * treeGreenVariations.length)]);
             } else {
-                tempTreeColor.setHex(0xffffff); // Preserve vertex-colored jungle trees
+                tempTreeColor.setHex(0xffffff); 
             }
+            const hsl = {};
+            tempTreeColor.getHSL(hsl);
+            hsl.h += (Math.random() - 0.5) * 0.05;
+            hsl.s += (Math.random() - 0.5) * 0.12;
+            hsl.l += (Math.random() - 0.5) * 0.08;
+            tempTreeColor.setHSL(hsl.h, hsl.s, hsl.l);
             mesh.setColorAt(i, tempTreeColor);
         }
     });
@@ -2330,6 +2374,12 @@ console.error = function(...args) {
                             } else {
                                 tempTreeColor.setHex(0xffffff);
                             }
+                            const hsl = {};
+                            tempTreeColor.getHSL(hsl);
+                            hsl.h += (Math.random() - 0.5) * 0.05;
+                            hsl.s += (Math.random() - 0.5) * 0.12;
+                            hsl.l += (Math.random() - 0.5) * 0.08;
+                            tempTreeColor.setHSL(hsl.h, hsl.s, hsl.l);
                             instMesh.setColorAt(i, tempTreeColor);
                         } else {
                             // Sleep under the ground inside the range
@@ -2982,18 +3032,49 @@ console.error = function(...args) {
                     for (let z = minZ; z <= maxZ; z += SPLAT_CELL_SIZE) {
                         const dx = x - hitPoint.x;
                         const dz = z - hitPoint.z;
-                        if (dx*dx + dz*dz <= radius*radius) {
+                        const distSq = dx*dx + dz*dz;
+                        if (distSq <= radius*radius) {
                             const cellKey = Math.floor(x / SPLAT_CELL_SIZE) + '_' + Math.floor(z / SPLAT_CELL_SIZE);
                             const currentCarve = carveGrid.get(cellKey) || 0.0;
-                            // Retrieve uncarved base height
                             const baseH = terrainHeightJS(x, z) + currentCarve;
-                            // Target height below sea level (2.4m), let's target 1.0m
-                            const targetCarve = Math.max(0.0, baseH - 1.0);
                             
-                            // Lerp to smooth the carving process
+                            // Radial/Gaussian Softness Falloff
+                            const dist = Math.sqrt(distSq);
+                            const t = dist / radius;
+                            const softness = customColors.brushSoftness;
+                            let factor = 1.0;
+                            if (softness > 0.0 && t > (1.0 - softness)) {
+                                const falloffStart = 1.0 - softness;
+                                const normalizedT = (t - falloffStart) / softness;
+                                factor = 1.0 - normalizedT * normalizedT * (3.0 - 2.0 * normalizedT);
+                            }
+                            
+                            const targetCarve = Math.max(0.0, baseH - 1.0) * factor;
                             const newCarve = THREE.MathUtils.lerp(currentCarve, targetCarve, 0.45);
                             if (Math.abs(newCarve - currentCarve) > 0.01) {
-                                carveGrid.set(cellKey, newCarve);
+                                if (newCarve <= 0.01) {
+                                    carveGrid.delete(cellKey);
+                                } else {
+                                    carveGrid.set(cellKey, newCarve);
+                                }
+                                gridChanged = true;
+                            }
+                        }
+                    }
+                }
+            } else if (brushMode === 'erase') {
+                for (let x = minX; x <= maxX; x += SPLAT_CELL_SIZE) {
+                    for (let z = minZ; z <= maxZ; z += SPLAT_CELL_SIZE) {
+                        const dx = x - hitPoint.x;
+                        const dz = z - hitPoint.z;
+                        if (dx*dx + dz*dz <= radius*radius) {
+                            const cellKey = Math.floor(x / SPLAT_CELL_SIZE) + '_' + Math.floor(z / SPLAT_CELL_SIZE);
+                            if (splatGrid.has(cellKey)) {
+                                splatGrid.delete(cellKey);
+                                gridChanged = true;
+                            }
+                            if (carveGrid.has(cellKey)) {
+                                carveGrid.delete(cellKey);
                                 gridChanged = true;
                             }
                         }
@@ -3007,9 +3088,16 @@ console.error = function(...args) {
                         const dz = z - hitPoint.z;
                         if (dx*dx + dz*dz <= radius*radius) {
                             const cellKey = Math.floor(x / SPLAT_CELL_SIZE) + '_' + Math.floor(z / SPLAT_CELL_SIZE);
-                            if (splatGrid.get(cellKey) !== value) {
-                                splatGrid.set(cellKey, value);
-                                gridChanged = true;
+                            if (value === -1.0) {
+                                if (splatGrid.has(cellKey)) {
+                                    splatGrid.delete(cellKey);
+                                    gridChanged = true;
+                                }
+                            } else {
+                                if (splatGrid.get(cellKey) !== value) {
+                                    splatGrid.set(cellKey, value);
+                                    gridChanged = true;
+                                }
                             }
                         }
                     }
@@ -3220,6 +3308,7 @@ console.error = function(...args) {
         }
         
         waterUniforms.uTime.value = time;
+        sharedTimeUniform.value = time;
         
         currentFrame++;
         framesThisSecond++;
@@ -3714,6 +3803,129 @@ console.error = function(...args) {
         }
     }
 
+    function saveToLocalStorage() {
+        localStorage.setItem('ghibli_splat_grid', JSON.stringify(Array.from(splatGrid.entries())));
+        localStorage.setItem('ghibli_carve_grid', JSON.stringify(Array.from(carveGrid.entries())));
+        
+        const colorsData = {
+            enabled: customColors.enabled,
+            grass: customColors.grass.getHexString(),
+            dirt: customColors.dirt.getHexString(),
+            sand: customColors.sand.getHexString(),
+            noiseScale: customColors.noiseScale,
+            heightMultiplier: customColors.heightMultiplier,
+            brushSoftness: customColors.brushSoftness
+        };
+        localStorage.setItem('ghibli_custom_colors', JSON.stringify(colorsData));
+        alert('Paint map and settings saved to LocalStorage!');
+    }
+
+    function loadFromLocalStorage() {
+        try {
+            const splatData = localStorage.getItem('ghibli_splat_grid');
+            if (splatData) {
+                const entries = JSON.parse(splatData);
+                splatGrid.clear();
+                entries.forEach(([k, v]) => splatGrid.set(k, v));
+            }
+            
+            const carveData = localStorage.getItem('ghibli_carve_grid');
+            if (carveData) {
+                const entries = JSON.parse(carveData);
+                carveGrid.clear();
+                entries.forEach(([k, v]) => carveGrid.set(k, v));
+            }
+
+            const colorsDataStr = localStorage.getItem('ghibli_custom_colors');
+            if (colorsDataStr) {
+                const colorsData = JSON.parse(colorsDataStr);
+                customColors.enabled = colorsData.enabled || 0.0;
+                customColors.grass.setHex(parseInt(colorsData.grass, 16));
+                customColors.dirt.setHex(parseInt(colorsData.dirt, 16));
+                customColors.sand.setHex(parseInt(colorsData.sand, 16));
+                customColors.noiseScale = colorsData.noiseScale || 1.0;
+                customColors.heightMultiplier = colorsData.heightMultiplier || 1.0;
+                customColors.brushSoftness = colorsData.brushSoftness !== undefined ? colorsData.brushSoftness : 0.5;
+
+                terrainColorUniforms.uCustomColorsEnabled.value = customColors.enabled;
+                terrainColorUniforms.uGrassColor.value.copy(customColors.grass);
+                terrainColorUniforms.uDirtColor.value.copy(customColors.dirt);
+                terrainColorUniforms.uSandColor.value.copy(customColors.sand);
+            }
+            
+            const centerX = isEditorMode ? cameraBase.position.x : playerGrp.position.x;
+            const centerZ = isEditorMode ? cameraBase.position.z : playerGrp.position.z;
+            updateTerrainGeometry(centerX, centerZ);
+            needsMinimapUpdate = true;
+            if (editorUI && editorUI.syncUIColors) {
+                editorUI.syncUIColors();
+            }
+        } catch (e) {
+            console.error('Failed to load from LocalStorage:', e);
+        }
+    }
+
+    function exportJSON() {
+        const data = {
+            splatGrid: Array.from(splatGrid.entries()),
+            carveGrid: Array.from(carveGrid.entries()),
+            customColors: {
+                enabled: customColors.enabled,
+                grass: customColors.grass.getHexString(),
+                dirt: customColors.dirt.getHexString(),
+                sand: customColors.sand.getHexString(),
+                noiseScale: customColors.noiseScale,
+                heightMultiplier: customColors.heightMultiplier,
+                brushSoftness: customColors.brushSoftness
+            }
+        };
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'ghibli_editor_export.json';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    function importJSON(jsonText) {
+        try {
+            const data = JSON.parse(jsonText);
+            if (data.splatGrid) {
+                splatGrid.clear();
+                data.splatGrid.forEach(([k, v]) => splatGrid.set(k, v));
+            }
+            if (data.carveGrid) {
+                carveGrid.clear();
+                data.carveGrid.forEach(([k, v]) => carveGrid.set(k, v));
+            }
+            if (data.customColors) {
+                const c = data.customColors;
+                customColors.enabled = c.enabled || 0.0;
+                customColors.grass.setHex(parseInt(c.grass, 16));
+                customColors.dirt.setHex(parseInt(c.dirt, 16));
+                customColors.sand.setHex(parseInt(c.sand, 16));
+                customColors.noiseScale = c.noiseScale || 1.0;
+                customColors.heightMultiplier = c.heightMultiplier || 1.0;
+                customColors.brushSoftness = c.brushSoftness !== undefined ? c.brushSoftness : 0.5;
+
+                terrainColorUniforms.uCustomColorsEnabled.value = customColors.enabled;
+                terrainColorUniforms.uGrassColor.value.copy(customColors.grass);
+                terrainColorUniforms.uDirtColor.value.copy(customColors.dirt);
+                terrainColorUniforms.uSandColor.value.copy(customColors.sand);
+            }
+            const centerX = isEditorMode ? cameraBase.position.x : playerGrp.position.x;
+            const centerZ = isEditorMode ? cameraBase.position.z : playerGrp.position.z;
+            updateTerrainGeometry(centerX, centerZ);
+            needsMinimapUpdate = true;
+            alert('Settings and painted map imported successfully!');
+        } catch(e) {
+            alert('Failed to parse JSON export file.');
+        }
+    }
+
     // Initialize Editor UI Panel
     editorUI = initEditor({
         scene: scene,
@@ -3752,8 +3964,15 @@ console.error = function(...args) {
             needsMinimapUpdate = true;
         },
         getMinimapZoom: () => minimapZoom,
-        setMinimapZoom: (zoom) => { minimapZoom = zoom; }
+        setMinimapZoom: (zoom) => { minimapZoom = zoom; },
+        saveToLocalStorage: saveToLocalStorage,
+        loadFromLocalStorage: loadFromLocalStorage,
+        exportJSON: exportJSON,
+        importJSON: importJSON
     });
+
+    // Auto-load custom paint data on startup
+    loadFromLocalStorage();
 
 
     // ==========================================

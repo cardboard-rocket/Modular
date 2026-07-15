@@ -321,10 +321,19 @@ export function initEditor(options) {
                     <input type="range" id="slider-brush-size" class="editor-slider" min="10" max="150" value="40">
                 </div>
                 <div class="control-group">
+                    <div class="control-label">Brush Softness: <span id="val-brush-softness">0.50</span></div>
+                    <input type="range" id="slider-brush-softness" class="editor-slider" min="0.0" max="1.0" step="0.05" value="0.50">
+                </div>
+                <div class="control-group">
                     <div class="control-label">Map Zoom/Scale: <span id="val-map-zoom">1.0x</span></div>
                     <input type="range" id="slider-map-zoom" class="editor-slider" min="0.2" max="4.0" step="0.1" value="1.0">
                 </div>
                 <button id="btn-clear-paint" class="editor-btn btn-danger">Clear Paint Map</button>
+                <hr style="border:0; border-top:1px solid rgba(255,255,255,0.08); margin:8px 0;">
+                <button id="btn-save-local" class="editor-btn">Save to LocalStorage</button>
+                <button id="btn-export-json" class="editor-btn">Export JSON</button>
+                <button id="btn-import-json" class="editor-btn">Import JSON</button>
+                <input type="file" id="file-import-json" style="display:none;" accept=".json">
             </details>
 
         </div>
@@ -596,6 +605,69 @@ export function initEditor(options) {
         waterToonUniforms.uRimColor.value.copy(c);
     });
 
+    // Brush Softness Slider
+    const sliderBrushSoftness = document.getElementById('slider-brush-softness');
+    const valBrushSoftness = document.getElementById('val-brush-softness');
+    if (sliderBrushSoftness) {
+        sliderBrushSoftness.addEventListener('input', () => {
+            const val = parseFloat(sliderBrushSoftness.value);
+            valBrushSoftness.innerText = val.toFixed(2);
+            customColors.brushSoftness = val;
+        });
+    }
+
+    // Save to LocalStorage Button
+    const btnSaveLocal = document.getElementById('btn-save-local');
+    if (btnSaveLocal && options.saveToLocalStorage) {
+        btnSaveLocal.addEventListener('click', () => {
+            options.saveToLocalStorage();
+        });
+    }
+
+    // Export JSON Button
+    const btnExportJson = document.getElementById('btn-export-json');
+    if (btnExportJson && options.exportJSON) {
+        btnExportJson.addEventListener('click', () => {
+            options.exportJSON();
+        });
+    }
+
+    // Import JSON Button
+    const btnImportJson = document.getElementById('btn-import-json');
+    const fileImportJson = document.getElementById('file-import-json');
+    if (btnImportJson && fileImportJson && options.importJSON) {
+        btnImportJson.addEventListener('click', () => {
+            fileImportJson.click();
+        });
+        fileImportJson.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+                options.importJSON(evt.target.result);
+                syncUIColors();
+            };
+            reader.readAsText(file);
+        });
+    }
+
+    function syncUIColors() {
+        checkColorOverride.checked = customColors.enabled > 0.5;
+        pickerColorGrass.value = '#' + customColors.grass.getHexString();
+        pickerColorDirt.value = '#' + customColors.dirt.getHexString();
+        pickerColorSand.value = '#' + customColors.sand.getHexString();
+        
+        sliderNoiseScale.value = customColors.noiseScale;
+        valNoiseScale.innerText = customColors.noiseScale.toFixed(2) + 'x';
+        sliderHeightMult.value = customColors.heightMultiplier;
+        valHeightMult.innerText = customColors.heightMultiplier.toFixed(2) + 'x';
+        
+        if (sliderBrushSoftness) {
+            sliderBrushSoftness.value = customColors.brushSoftness;
+            valBrushSoftness.innerText = customColors.brushSoftness.toFixed(2);
+        }
+    }
+
     // Expose dynamic updates to the main rendering loop
     return {
         updateEditorUI,
@@ -604,6 +676,7 @@ export function initEditor(options) {
             valFlySpeed.innerText = flyMultiplier.toFixed(1) + 'x';
         },
         getCloudSpeed: () => cloudSpeedVal,
-        getCloudHeight: () => cloudHeightVal
+        getCloudHeight: () => cloudHeightVal,
+        syncUIColors
     };
 }
