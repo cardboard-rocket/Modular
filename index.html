@@ -268,6 +268,21 @@ console.error = function(...args) {
     import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
     import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
     import { Lensflare, LensflareElement } from 'three/addons/objects/Lensflare.js';
+    import terrainJungle from './terrain-jungle.js';
+    import terrainArchipelago from './terrain-archipelago.js';
+    import terrainGhibli from './terrain-ghibli.js';
+    import terrainPlains from './terrain-plains.js';
+    import terrainMountains from './terrain-mountains.js';
+    import terrainMagical from './terrain-magical.js';
+
+    const biomes = [
+        terrainJungle,
+        terrainArchipelago,
+        terrainGhibli,
+        terrainPlains,
+        terrainMountains,
+        terrainMagical
+    ];
 
 
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -576,83 +591,33 @@ console.error = function(...args) {
     // Zone selector: z-axis directional journey with gentle x-warp so borders aren't ruler-straight
     function getZone(x, z) {
         let warpedZ = -z + snoise(x * 0.0004, z * 0.0002) * 800.0;
-        // zone 0 = Jungle (spawn),  zone 1 = Water/Islands,  zone 2 = Continental Land
-        // Jungle:  warpedZ < 1500   |  transition 1500-3000
-        // Water:   3000 - 5500      |  transition 5500-7000
-        // Land:    warpedZ > 7000
         if (warpedZ < 1500.0) return 0.0;
-        if (warpedZ < 3000.0) return (warpedZ - 1500.0) / 1500.0;          // 0→1
+        if (warpedZ < 3000.0) return (warpedZ - 1500.0) / 1500.0;
         if (warpedZ < 5500.0) return 1.0;
-        if (warpedZ < 7000.0) return 1.0 + (warpedZ - 5500.0) / 1500.0;   // 1→2
-        return 2.0;
-    }
-
-    function jungleHeight(x, z) {
-        let n1 = snoise(x * 0.002, z * 0.002);
-        let n2 = snoise(x * 0.008, z * 0.008);
-        let n3 = snoise(x * 0.02, z * 0.02);
-        let ridge = 1.0 - Math.abs(n1);
-        ridge = ridge * ridge;
-        let h = ridge * 65.0 - 2.0 + n2 * 14.0 + n3 * 4.0;
-        return Math.max(7.5, h + 8.0); // Make sure the jungle is completely dry land (min 7.5m altitude)
-    }
-
-    function waterHeight(x, z, zone) {
-        let archNoise = snoise(x * 0.002, z * 0.002);
-        let y = archNoise * 6.0 - 4.5;
-        // Dynamically scale down island spawn rate as we get closer to the deep ocean center (zone = 1.0)
-        let distFromCenter = Math.abs(zone - 1.0); // 0.0 in pure water, up to 1.0 at shorelines
-        let islandThreshold = 0.88 - distFromCenter * 0.15; // requires higher noise values in deep ocean center to spawn an island
-        if (archNoise > islandThreshold) {
-            y += (archNoise - islandThreshold) * 80.0;
-        }
-        return y;
-    }
-
-    function landHeight(x, z) {
-        let y = snoise(x * 0.0015, z * 0.0015) * 90.0 + snoise(x * 0.005, z * 0.005) * 35.0 + snoise(x * 0.02, z * 0.02) * 8.0;
-        if (y < 12.0) y = (y - 12.0) * 0.15 + 12.0;
-        
-        let rn = snoise(x * 0.0015 + 100.0, z * 0.0015 + 100.0);
-        let rw = snoise(x * 0.01, z * 0.01) * 0.02;
-        let rd = Math.abs(rn + rw);
-        if (rd < 0.04) { 
-            let c = 1.0 - rd / 0.04; 
-            c = c * c * (3.0 - 2.0 * c); 
-            y -= c * 15.0; 
-        }
-        
-        // Vastly reduce lake spawning in Ghibli land
-        let ln = snoise(x * 0.002 - 500.0, z * 0.002 + 500.0);
-        if (ln > 0.72) { // Increased from 0.45 to 0.72 so lakes are very rare
-            let d = Math.min((ln - 0.72) * 3.5, 1.0); 
-            let c = d * d * (3.0 - 2.0 * d); 
-            y -= c * 15.0; 
-        }
-        return Math.max(6.0, y); // Prevent sea water from flooding Ghibli continental land (min 6.0m altitude)
+        if (warpedZ < 7000.0) return 1.0 + (warpedZ - 5500.0) / 1500.0;
+        if (warpedZ < 9500.0) return 2.0;
+        if (warpedZ < 11000.0) return 2.0 + (warpedZ - 9500.0) / 1500.0;
+        if (warpedZ < 13500.0) return 3.0;
+        if (warpedZ < 15000.0) return 3.0 + (warpedZ - 13500.0) / 1500.0;
+        if (warpedZ < 17500.0) return 4.0;
+        if (warpedZ < 19000.0) return 4.0 + (warpedZ - 17500.0) / 1500.0;
+        return 5.0;
     }
 
     function terrainHeightJS(x, z) {
         let zone = getZone(x, z);
+        let lowerZone = Math.floor(zone);
+        let upperZone = Math.ceil(zone);
 
-        // Fast paths — no blending needed, skip other terrain calcs entirely
-        if (zone <= 0.0) return jungleHeight(x, z);
-        if (zone >= 2.0) return landHeight(x, z);
-
-        // Pure water band (getZone returns exactly 1.0 for z=3000..5500)
-        if (zone === 1.0) return waterHeight(x, z, zone);
-
-        // Transition: Jungle → Water  (zone 0→1)
-        if (zone < 1.0) {
-            let t = zone; // already 0→1
+        if (lowerZone === upperZone) {
+            return biomes[lowerZone].getHeight(x, z, snoise, zone);
+        } else {
+            let t = zone - lowerZone;
             t = t * t * (3.0 - 2.0 * t); // smoothstep
-            return jungleHeight(x, z) * (1.0 - t) + waterHeight(x, z, zone) * t;
+            let h1 = biomes[lowerZone].getHeight(x, z, snoise, zone);
+            let h2 = biomes[upperZone].getHeight(x, z, snoise, zone);
+            return h1 * (1.0 - t) + h2 * t;
         }
-
-        // Transition: Water → Land  (zone 1→2)
-        let t = zone - 1.0; // 0→1
-        t = t * t * (3.0 - 2.0 * t);
-        return waterHeight(x, z, zone) * (1.0 - t) + landHeight(x, z) * t;
     }
 
 
@@ -668,20 +633,7 @@ console.error = function(...args) {
     let lastTerrainGridX = -9999;
     let lastTerrainGridZ = -9999;
 
-    const colorDeepWater = new THREE.Color(0x1a4a8c);
-    const colorShallowWater = new THREE.Color(0x4da9e8); // Matches the waterMesh exactly
-    const colorSand = new THREE.Color(0xf2e1b8);
-    const colorIslandGrass = new THREE.Color(0x76d149);
-    const colorEmeraldGrass = new THREE.Color(0x56b847);
-    const colorOliveGrass = new THREE.Color(0x8cc440);
-    const colorHigh = new THREE.Color(0x89e05e); // Grass High
-    const colorJungleGrass = new THREE.Color(0x389c45); // Tropical emerald
-    const colorJungleHigh = new THREE.Color(0x286330);  // Deep canopy green
-    const colorIslandRock = new THREE.Color(0x8a725a);
-    const colorDirt = new THREE.Color(0xdcb58a); 
-    const colorPath = new THREE.Color(0xbd9973); // dirt path color
     const tempColor = new THREE.Color();
-    const patchColor = new THREE.Color();
 
     function smoothstep(edge0, edge1, x) {
         const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
@@ -725,7 +677,6 @@ console.error = function(...args) {
             const worldZ = pos.getZ(i) + gridZ;
             const h = terrainHeightJS(worldX, worldZ);
             let zone = getZone(worldX, worldZ);
-            let isJungle = zone < 1.0;
 
             if (h < 2.35) {
                 pos.setY(i, Math.min(h, 2.15));
@@ -733,31 +684,24 @@ console.error = function(...args) {
                 pos.setY(i, h);
             }
 
-            const meadowNoise = snoise(worldX * 0.0035, worldZ * 0.0035);
-            const oliveNoise = snoise(worldX * 0.008 + 200, worldZ * 0.008 + 200);
+            let lowerZone = Math.floor(zone);
+            let upperZone = Math.ceil(zone);
 
-            if (h < 1.0) {
-                tempColor.copy(colorDeepWater);
-            } else if (h < 2.35) {
-                tempColor.lerpColors(colorDeepWater, colorSand, smoothstep(1.0, 2.35, h));
-            } else if (h < 4.2) {
-                tempColor.copy(colorSand);
-            } else if (h < 6.2) {
-                if (isJungle) tempColor.lerpColors(colorSand, colorJungleGrass, smoothstep(4.2, 6.2, h));
-                else tempColor.lerpColors(colorSand, colorIslandGrass, smoothstep(4.2, 6.2, h));
-            } else if (h < 25) {
-                if (isJungle) {
-                    tempColor.lerpColors(colorJungleGrass, colorJungleHigh, smoothstep(6.2, 25, h));
-                } else {
-                    patchColor.copy(colorIslandGrass);
-                    if (meadowNoise > 0.15) patchColor.lerp(colorEmeraldGrass, Math.min(1, (meadowNoise - 0.15) * 2.5));
-                    if (oliveNoise > 0.2) patchColor.lerp(colorOliveGrass, Math.min(1, (oliveNoise - 0.2) * 2.5));
-                    tempColor.lerpColors(patchColor, colorHigh, smoothstep(6.2, 25, h));
-                }
-            } else if (h < 38) {
-                tempColor.lerpColors(isJungle ? colorJungleHigh : colorHigh, colorIslandRock, smoothstep(25, 38, h));
+            if (zone < 1.0) {
+                biomes[0].getColor(h, worldX, worldZ, snoise, tempColor, smoothstep);
+            } else if (zone < 3.0) {
+                biomes[2].getColor(h, worldX, worldZ, snoise, tempColor, smoothstep);
             } else {
-                tempColor.lerpColors(colorIslandRock, colorDirt, smoothstep(38, 55, h));
+                if (lowerZone === upperZone) {
+                    biomes[lowerZone].getColor(h, worldX, worldZ, snoise, tempColor, smoothstep);
+                } else {
+                    const t = zone - lowerZone;
+                    const c1 = new THREE.Color();
+                    const c2 = new THREE.Color();
+                    biomes[lowerZone].getColor(h, worldX, worldZ, snoise, c1, smoothstep);
+                    biomes[upperZone].getColor(h, worldX, worldZ, snoise, c2, smoothstep);
+                    tempColor.lerpColors(c1, c2, t);
+                }
             }
 
             colors.setXYZ(i, tempColor.r, tempColor.g, tempColor.b);
@@ -1494,7 +1438,13 @@ console.error = function(...args) {
                 if (warpedZ < 3000.0) return (warpedZ - 1500.0) / 1500.0;
                 if (warpedZ < 5500.0) return 1.0;
                 if (warpedZ < 7000.0) return 1.0 + (warpedZ - 5500.0) / 1500.0;
-                return 2.0;
+                if (warpedZ < 9500.0) return 2.0;
+                if (warpedZ < 11000.0) return 2.0 + (warpedZ - 9500.0) / 1500.0;
+                if (warpedZ < 13500.0) return 3.0;
+                if (warpedZ < 15000.0) return 3.0 + (warpedZ - 13500.0) / 1500.0;
+                if (warpedZ < 17500.0) return 4.0;
+                if (warpedZ < 19000.0) return 4.0 + (warpedZ - 17500.0) / 1500.0;
+                return 5.0;
             }
 
             float jungleHeightGLSL(vec2 pos) {
@@ -1530,17 +1480,52 @@ console.error = function(...args) {
                 return max(6.0, y);
             }
 
+            float plainsHeightGLSL(vec2 pos) {
+                float n1 = snoise(pos * 0.001);
+                float n2 = snoise(pos * 0.005);
+                float h = n1 * 8.0 + n2 * 2.0 + 9.0;
+                return max(6.0, h);
+            }
+
+            float mountainsHeightGLSL(vec2 pos) {
+                float n1 = snoise(pos * 0.001);
+                float n2 = snoise(pos * 0.004);
+                float ridge = 1.0 - abs(n1);
+                ridge = ridge * ridge;
+                float h = ridge * 160.0 + n2 * 20.0 + 8.0;
+                return max(6.0, h);
+            }
+
+            float magicalHeightGLSL(vec2 pos) {
+                float n1 = snoise(pos * 0.0015);
+                float n2 = snoise(pos * 0.008);
+                float pillars = max(0.0, sin(pos.x * 0.004) * cos(pos.y * 0.004));
+                float h = n1 * 45.0 + n2 * 10.0 + (pillars * pillars) * 80.0 + 10.0;
+                return max(6.0, h);
+            }
+
+            float getBiomeHeightGLSL(int biomeIdx, vec2 pos, float zone) {
+                if (biomeIdx == 0) return jungleHeightGLSL(pos);
+                if (biomeIdx == 1) return waterHeightGLSL(pos, zone);
+                if (biomeIdx == 2) return landHeightGLSL(pos);
+                if (biomeIdx == 3) return plainsHeightGLSL(pos);
+                if (biomeIdx == 4) return mountainsHeightGLSL(pos);
+                return magicalHeightGLSL(pos);
+            }
+
             float terrainHeightGLSL(vec2 pos) {
                 float zone = getZoneGLSL(pos);
-                if (zone <= 0.0) return jungleHeightGLSL(pos);
-                if (zone == 1.0) return waterHeightGLSL(pos, zone);
-                if (zone >= 2.0) return landHeightGLSL(pos);
-                if (zone < 1.0) {
-                    float t = zone; t = t * t * (3.0 - 2.0 * t);
-                    return mix(jungleHeightGLSL(pos), waterHeightGLSL(pos, zone), t);
+                int lowerZone = int(floor(zone));
+                int upperZone = int(ceil(zone));
+                if (lowerZone == upperZone) {
+                    return getBiomeHeightGLSL(lowerZone, pos, zone);
+                } else {
+                    float t = zone - float(lowerZone);
+                    t = t * t * (3.0 - 2.0 * t); // smoothstep
+                    float h1 = getBiomeHeightGLSL(lowerZone, pos, zone);
+                    float h2 = getBiomeHeightGLSL(upperZone, pos, zone);
+                    return mix(h1, h2, t);
                 }
-                float t = zone - 1.0; t = t * t * (3.0 - 2.0 * t);
-                return mix(waterHeightGLSL(pos, zone), landHeightGLSL(pos), t);
             }
         ` + shader.fragmentShader;
         
@@ -2070,7 +2055,12 @@ console.error = function(...args) {
                             
                             let zone = getZone(nx, nz);
                             let isJungleTree = meshIdx >= 12;
-                            let biomeAllowed = isJungleTree ? (zone < 1.0) : (zone >= 1.0);
+                            let biomeAllowed = false;
+                            if (isJungleTree) {
+                                biomeAllowed = (zone < 1.0);
+                            } else {
+                                biomeAllowed = (zone >= 1.0 && zone < 3.0);
+                            }
                             if (!biomeAllowed) {
                                 attempts++;
                                 continue;
@@ -2920,7 +2910,13 @@ console.error = function(...args) {
             else if (zone < 1.0) landName = "░ Jungle Shore";
             else if (zone === 1.0) landName = "🌊 Water Archipelago";
             else if (zone < 2.0) landName = "░ Continental Shore";
-            else landName = "🏔️ Ghibli Land";
+            else if (zone === 2.0) landName = "🌳 Ghibli Land";
+            else if (zone < 3.0) landName = "░ Plain Shore";
+            else if (zone === 3.0) landName = "🌾 Golden Plains";
+            else if (zone < 4.0) landName = "░ Mountain Shore";
+            else if (zone === 4.0) landName = "🏔️ Misty Mountains";
+            else if (zone < 5.0) landName = "░ Magical Shore";
+            else landName = "✨ Magical Sanctuary";
             document.getElementById('fps-counter').innerText = currentFps + ' FPS | ALT: ' + currentAlt + 'm | Land: ' + landName;
         }
         const currentGroundY = terrainHeightJS(playerGrp.position.x, playerGrp.position.z);
