@@ -154,12 +154,8 @@ console.error = function(...args) {
     <button id="hide-ui-toggle" title="Toggle HUD (H)">👁️ Hide UI</button>
     <div id="ui-elements" style="display: flex; flex-direction: column; gap: 8px; align-items: flex-end;">
       <button id="desktop-climb-btn" title="Hold C or W to Climb">↑ Climb (C)</button>
-      <button id="char-toggle">Switch to Porco 2</button>
-      <button id="res-toggle">Render: HD</button>
       <button id="zoom-toggle">Zoom: Normal</button>
-      <button id="summer-toggle">☀️ Summer Filter: ON</button>
       <button id="pp-toggle">✨ Post-Processing: ON</button>
-      <button id="atmo-toggle" title="Open Atmosphere & Color Fine-Tuning Panel">🎨 Atmosphere Tuning</button>
       <button id="time-toggle">Switch to Dusk</button>
       <button id="music-toggle">▶ Music</button>
       <button id="track-toggle" style="display:none">Track: Valley Wind</button>
@@ -169,66 +165,6 @@ console.error = function(...args) {
     </div>
   </div>
   <div id="fps-counter" style="position: fixed; top: 16px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.5); color: #fff; padding: 4px 8px; border-radius: 4px; font-family: monospace; font-size: 12px; z-index: 10; pointer-events: none;">0 FPS</div>
-
-  <!-- Atmosphere & Color Studio Modal -->
-  <div id="atmo-modal" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 92%; max-width: 460px; max-height: 88vh; overflow-y: auto; background: rgba(20, 26, 40, 0.95); border: 1.5px solid #4a6fa5; border-radius: 12px; padding: 20px; color: #e2e8f0; font-family: 'Segoe UI', Tahoma, sans-serif; z-index: 10000; box-shadow: 0 15px 35px rgba(0,0,0,0.6); backdrop-filter: blur(10px);">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid #334155; padding-bottom: 10px;">
-      <h3 style="margin: 0; font-size: 18px; color: #6dd5ed;">🎨 Atmosphere & Color Studio</h3>
-      <button id="close-atmo-btn" style="background: transparent; border: none; color: #cbd5e1; font-size: 20px; cursor: pointer;">✖</button>
-    </div>
-
-    <!-- Time Phase Tabs -->
-    <div style="display: flex; gap: 8px; margin-bottom: 18px;">
-      <button class="atmo-tab-btn" data-phase="0" style="flex: 1; padding: 8px; border-radius: 6px; border: 1px solid #475569; background: #2563eb; color: #fff; font-weight: bold; cursor: pointer;">☀️ Day</button>
-      <button class="atmo-tab-btn" data-phase="1" style="flex: 1; padding: 8px; border-radius: 6px; border: 1px solid #475569; background: #334155; color: #cbd5e1; font-weight: bold; cursor: pointer;">🌇 Dusk</button>
-      <button class="atmo-tab-btn" data-phase="2" style="flex: 1; padding: 8px; border-radius: 6px; border: 1px solid #475569; background: #334155; color: #cbd5e1; font-weight: bold; cursor: pointer;">🌌 Twilight</button>
-    </div>
-
-    <!-- Regular Section -->
-    <div style="background: rgba(30, 41, 59, 0.6); border-radius: 8px; padding: 12px; margin-bottom: 16px; border: 1px solid #334155;">
-      <div style="font-weight: bold; color: #facc15; font-size: 14px; margin-bottom: 10px;">☀️ Regular Scene Lighting & Atmosphere</div>
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 13px;">
-        <label style="display: flex; justify-content: space-between; align-items: center;">Sky/BG: <input type="color" id="atmo-bg-col" style="border:none; width:36px; height:24px; border-radius:4px; cursor:pointer;"></label>
-        <label style="display: flex; justify-content: space-between; align-items: center;">Fog/Horizon: <input type="color" id="atmo-fog-col" style="border:none; width:36px; height:24px; border-radius:4px; cursor:pointer;"></label>
-        <label style="display: flex; justify-content: space-between; align-items: center;">Sunlight: <input type="color" id="atmo-dir-col" style="border:none; width:36px; height:24px; border-radius:4px; cursor:pointer;"></label>
-        <label style="display: flex; justify-content: space-between; align-items: center;">Ambient: <input type="color" id="atmo-amb-col" style="border:none; width:36px; height:24px; border-radius:4px; cursor:pointer;"></label>
-      </div>
-      <div style="margin-top: 12px; display: flex; flex-direction: column; gap: 8px; font-size: 13px;">
-        <label style="display: flex; justify-content: space-between;">Sun Intensity: <span id="val-dirI">2.5</span></label>
-        <input type="range" id="atmo-dirI" min="0.0" max="6.0" step="0.1" value="2.5" style="width: 100%;">
-        
-        <label style="display: flex; justify-content: space-between;">Ambient Intensity: <span id="val-ambI">0.9</span></label>
-        <input type="range" id="atmo-ambI" min="0.0" max="3.0" step="0.1" value="0.9" style="width: 100%;">
-        
-        <label style="display: flex; justify-content: space-between;">Exposure (Tone Mapping): <span id="val-exp">0.9</span></label>
-        <input type="range" id="atmo-exp" min="0.2" max="2.5" step="0.05" value="0.9" style="width: 100%;">
-      </div>
-    </div>
-
-    <!-- Post-Processing Section -->
-    <div style="background: rgba(30, 41, 59, 0.6); border-radius: 8px; padding: 12px; margin-bottom: 16px; border: 1px solid #334155;">
-      <div style="font-weight: bold; color: #a855f7; font-size: 14px; margin-bottom: 10px;">✨ Post-Processing (Color Grading & Bloom)</div>
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 13px; margin-bottom: 12px;">
-        <label style="display: flex; justify-content: space-between; align-items: center;">Warm Highlight: <input type="color" id="atmo-warm-col" style="border:none; width:36px; height:24px; border-radius:4px; cursor:pointer;"></label>
-        <label style="display: flex; justify-content: space-between; align-items: center;">Shadow Azure: <input type="color" id="atmo-cool-col" style="border:none; width:36px; height:24px; border-radius:4px; cursor:pointer;"></label>
-      </div>
-      <div style="display: flex; flex-direction: column; gap: 8px; font-size: 13px;">
-        <label style="display: flex; justify-content: space-between;">Ghibli Saturation: <span id="val-sat">1.18</span></label>
-        <input type="range" id="atmo-sat" min="0.5" max="2.2" step="0.05" value="1.18" style="width: 100%;">
-        
-        <label style="display: flex; justify-content: space-between;">Bloom Glow Strength: <span id="val-bloom">0.15</span></label>
-        <input type="range" id="atmo-bloom" min="0.0" max="1.0" step="0.02" value="0.15" style="width: 100%;">
-        
-        <label style="display: flex; justify-content: space-between;">Celluloid Vignette: <span id="val-vign">0.14</span></label>
-        <input type="range" id="atmo-vign" min="0.0" max="0.5" step="0.02" value="0.14" style="width: 100%;">
-      </div>
-    </div>
-
-    <div style="display: flex; justify-content: space-between; align-items: center;">
-      <button id="atmo-reset-btn" style="background: #ef4444; color: #fff; border: none; padding: 8px 14px; border-radius: 6px; font-weight: bold; cursor: pointer;">🔄 Reset Ghibli Defaults</button>
-      <button id="atmo-done-btn" style="background: #10b981; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; cursor: pointer;">Done</button>
-    </div>
-  </div>
 
   <div id="touch-controls">
     <div id="joystick-base"><div id="joystick-knob"></div></div>
@@ -241,7 +177,7 @@ console.error = function(...args) {
   
   <div id="pc-controls-hint" style="display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.5); color: white; padding: 10px 20px; border-radius: 8px; font-family: sans-serif; pointer-events: none; z-index: 100;">
     <div id="instruction">
-      Controls: WASD/Arrows to move, C or W to Climb, Shift to Boost, Space to Brake, H to Hide UI
+      Controls: WASD/Arrows to move, C or W to Climb, Shift to Boost, Space to Brake, H to Hide UI, P to Toggle Editor Mode
     </div>
   </div>
 
@@ -274,6 +210,7 @@ console.error = function(...args) {
     import terrainPlains from './terrain-plains.js';
     import terrainMountains from './terrain-mountains.js';
     import terrainMagical from './terrain-magical.js';
+    import { initEditor } from './editor-env.js';
 
     const biomes = [
         terrainJungle,
@@ -295,6 +232,21 @@ console.error = function(...args) {
         else if (lowerParam === 'plains') forcedZone = 3;
         else if (lowerParam === 'mountains') forcedZone = 4;
         else if (lowerParam === 'magical') forcedZone = 5;
+    }
+
+    const splatGrid = new Map();
+    const SPLAT_CELL_SIZE = 15;
+    let brushMode = 'rotate'; // 'rotate', 'write', 'erase'
+    let brushSize = 40;
+
+    let isEditorMode = false;
+    let editorFlySpeedMultiplier = 1.0;
+    let playerMarker = null;
+    let editorUI = null;
+
+    function getSplatValue(x, z) {
+        const cellKey = Math.floor(x / SPLAT_CELL_SIZE) + '_' + Math.floor(z / SPLAT_CELL_SIZE);
+        return splatGrid.get(cellKey) || 0.0;
     }
 
 
@@ -345,9 +297,17 @@ console.error = function(...args) {
     });
     
     window.addEventListener('wheel', (e) => {
-        cameraZoomDist += Math.sign(e.deltaY) * 6.0;
-        cameraZoomDist = Math.max(5.0, Math.min(300.0, cameraZoomDist));
-        updateZoomButtonText();
+        if (isEditorMode) {
+            editorFlySpeedMultiplier -= Math.sign(e.deltaY) * 0.1;
+            editorFlySpeedMultiplier = Math.max(0.1, Math.min(10.0, editorFlySpeedMultiplier));
+            if (editorUI && typeof editorUI.updateSliders === 'function') {
+                editorUI.updateSliders(editorFlySpeedMultiplier);
+            }
+        } else {
+            cameraZoomDist += Math.sign(e.deltaY) * 6.0;
+            cameraZoomDist = Math.max(5.0, Math.min(300.0, cameraZoomDist));
+            updateZoomButtonText();
+        }
     }, { passive: true });
 
     // ==========================================
@@ -438,14 +398,6 @@ console.error = function(...args) {
     composer.addPass(summerPass);
 
     let isSummerFilterOn = true;
-    const summerBtn = document.getElementById('summer-toggle');
-    if (summerBtn) {
-        summerBtn.addEventListener('click', () => {
-            isSummerFilterOn = !isSummerFilterOn;
-            summerPass.enabled = isSummerFilterOn;
-            summerBtn.innerText = isSummerFilterOn ? '☀️ Summer Filter: ON' : '☀️ Summer Filter: OFF';
-        });
-    }
 
     let isPostProcessingOn = true;
     const ppBtn = document.getElementById('pp-toggle');
@@ -716,6 +668,14 @@ console.error = function(...args) {
                     biomes[upperZone].getColor(h, worldX, worldZ, snoise, c2, smoothstep);
                     tempColor.lerpColors(c1, c2, t);
                 }
+            }
+
+            // Visual Splat Paint Overlay (Tints)
+            const splatVal = getSplatValue(worldX, worldZ);
+            if (splatVal === 1.0) {
+                tempColor.lerp(new THREE.Color(0xa855f7), 0.35);
+            } else if (splatVal === -1.0) {
+                tempColor.lerp(new THREE.Color(0xf43f5e), 0.35);
             }
 
             colors.setXYZ(i, tempColor.r, tempColor.g, tempColor.b);
@@ -1603,6 +1563,13 @@ console.error = function(...args) {
     waterMesh.receiveShadow = true;
     scene.add(waterMesh);
 
+    // Player position marker for Editor Mode
+    const markerGeo = new THREE.SphereGeometry(3.5, 8, 8);
+    const markerMat = new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true });
+    playerMarker = new THREE.Mesh(markerGeo, markerMat);
+    playerMarker.visible = false;
+    scene.add(playerMarker);
+
     treeMeshes.forEach(mesh => {
         mesh.castShadow = true;
         mesh.receiveShadow = true;
@@ -1963,17 +1930,19 @@ console.error = function(...args) {
             if (Math.abs(dummy.position.x - playerX) > cloudTeleportDist || Math.abs(dummy.position.z - playerZ) > cloudTeleportDist || dummy.position.y < -500) {
                 const angle = Math.random() * Math.PI * 2.0;
                 const r = cloudDist * (0.6 + Math.random() * 0.38);
+                const baseHeight = (editorUI && typeof editorUI.getCloudHeight === 'function') ? editorUI.getCloudHeight() : 150;
                 dummy.position.set(
                     playerX + Math.cos(angle) * r,
-                    150 + Math.random() * 100,
+                    baseHeight + Math.random() * 100,
                     playerZ + Math.sin(angle) * r
                 );
                 dummy.rotation.set(0, Math.random() * Math.PI, 0);
                 let s = 1.3 + Math.random() * 2.2;
                 dummy.scale.set(s * (0.8 + Math.random() * 0.8), s * (0.5 + Math.random() * 0.6), s * (0.8 + Math.random() * 0.8));
             }
-            dummy.position.x += 4.0 * dt * 3;
-            dummy.position.z += 1.5 * dt * 3;
+            const speedFactor = (editorUI && typeof editorUI.getCloudSpeed === 'function') ? editorUI.getCloudSpeed() : 1.0;
+            dummy.position.x += 4.0 * dt * 3 * speedFactor;
+            dummy.position.z += 1.5 * dt * 3 * speedFactor;
             dummy.updateMatrix();
             instClouds.setMatrixAt(i, dummy.matrix);
         }
@@ -2074,11 +2043,20 @@ console.error = function(...args) {
                             let zone = getZone(nx, nz);
                             let isJungleTree = meshIdx >= 12;
                             let biomeAllowed = false;
-                            if (isJungleTree) {
-                                biomeAllowed = (zone < 1.0);
+
+                            const splatVal = getSplatValue(nx, nz);
+                            if (splatVal === -1.0) {
+                                biomeAllowed = false;
+                            } else if (splatVal === 1.0) {
+                                biomeAllowed = true;
                             } else {
-                                biomeAllowed = (zone >= 1.0 && zone < 3.0);
+                                if (isJungleTree) {
+                                    biomeAllowed = (zone < 1.0);
+                                } else {
+                                    biomeAllowed = (zone >= 1.0 && zone < 3.0);
+                                }
                             }
+
                             if (!biomeAllowed) {
                                 attempts++;
                                 continue;
@@ -2250,7 +2228,15 @@ console.error = function(...args) {
     // 7. PLAYER SETUP
     // ==========================================
     const playerGrp = new THREE.Group();
-    playerGrp.position.set(0, 50, 0);
+    let startZ = 0;
+    if (forcedZone === 1) startZ = -4000;
+    else if (forcedZone === 2) startZ = -8000;
+    else if (forcedZone === 3) startZ = -12000;
+    else if (forcedZone === 4) startZ = -16000;
+    else if (forcedZone === 5) startZ = -20000;
+
+    const startY = 80 + terrainHeightJS(0, startZ);
+    playerGrp.position.set(0, startY, startZ);
     scene.add(playerGrp);
 
     const playerVisuals = new THREE.Group();
@@ -2293,13 +2279,7 @@ console.error = function(...args) {
         updateModelVisibility();
     });
 
-    document.getElementById('char-toggle').addEventListener('click', () => {
-        const idx = CHAR_CYCLE.findIndex(c => c.id === currentCharacter);
-        const nextIdx = (idx + 1) % CHAR_CYCLE.length;
-        currentCharacter = CHAR_CYCLE[nextIdx].id;
-        document.getElementById('char-toggle').innerText = CHAR_CYCLE[nextIdx].nextLabel;
-        updateModelVisibility();
-    });
+
 
 
     // Load Kiki GLTF Model
@@ -2525,9 +2505,14 @@ console.error = function(...args) {
         if(e.key.toLowerCase() === 's' || e.key === 'ArrowDown') keys.s = true;
         if(e.key.toLowerCase() === 'a' || e.key === 'ArrowLeft') keys.a = true;
         if(e.key.toLowerCase() === 'd' || e.key === 'ArrowRight') keys.d = true;
+        if(e.key.toLowerCase() === 'q') keys.q = true;
+        if(e.key.toLowerCase() === 'e') keys.e = true;
         if(e.key === 'Shift') keys.shift = true;
         if(e.key === ' ') keys.space = true;
         if(e.key.toLowerCase() === 'c') keys.c = true;
+        if(e.key.toLowerCase() === 'p') {
+            if (typeof toggleEditorMode === 'function') toggleEditorMode();
+        }
 
         if(e.key.toLowerCase() === 'h') {
             uiVisible = !uiVisible;
@@ -2549,6 +2534,8 @@ console.error = function(...args) {
         if(e.key.toLowerCase() === 's' || e.key === 'ArrowDown') keys.s = false;
         if(e.key.toLowerCase() === 'a' || e.key === 'ArrowLeft') keys.a = false;
         if(e.key.toLowerCase() === 'd' || e.key === 'ArrowRight') keys.d = false;
+        if(e.key.toLowerCase() === 'q') keys.q = false;
+        if(e.key.toLowerCase() === 'e') keys.e = false;
         if(e.key === 'Shift') keys.shift = false;
         if(e.key === ' ') keys.space = false;
         if(e.key.toLowerCase() === 'c') keys.c = false;
@@ -2560,11 +2547,7 @@ console.error = function(...args) {
 
     // --- UI button click handlers ---
     let isHD = true;
-    document.getElementById('res-toggle').addEventListener('click', () => {
-        isHD = !isHD;
-        renderer.setPixelRatio(isHD ? Math.min(window.devicePixelRatio || 1, isMobile ? 1.0 : 1.25) : 0.5);
-        document.getElementById('res-toggle').innerText = isHD ? 'Render: HD' : 'Render: SD';
-    });
+
 
     document.getElementById('zoom-toggle').addEventListener('click', () => {
         if (cameraZoomDist < 25.0) {
@@ -2768,29 +2751,80 @@ console.error = function(...args) {
     let isDragging = false;
     let previousPointerPos = { x: 0, y: 0 };
 
+    const raycaster = new THREE.Raycaster();
+    const mouseVector = new THREE.Vector2();
+
+    function paintTerrain(clientX, clientY) {
+        mouseVector.x = (clientX / window.innerWidth) * 2 - 1;
+        mouseVector.y = -(clientY / window.innerHeight) * 2 + 1;
+
+        raycaster.setFromCamera(mouseVector, camera);
+        const intersects = raycaster.intersectObject(terrain);
+
+        if (intersects.length > 0) {
+            const hitPoint = intersects[0].point;
+            const radius = brushSize;
+            const value = (brushMode === 'write') ? 1.0 : -1.0;
+
+            const minX = hitPoint.x - radius;
+            const maxX = hitPoint.x + radius;
+            const minZ = hitPoint.z - radius;
+            const maxZ = hitPoint.z + radius;
+
+            let gridChanged = false;
+            for (let x = minX; x <= maxX; x += SPLAT_CELL_SIZE) {
+                for (let z = minZ; z <= maxZ; z += SPLAT_CELL_SIZE) {
+                    const dx = x - hitPoint.x;
+                    const dz = z - hitPoint.z;
+                    if (dx*dx + dz*dz <= radius*radius) {
+                        const cellKey = Math.floor(x / SPLAT_CELL_SIZE) + '_' + Math.floor(z / SPLAT_CELL_SIZE);
+                        if (splatGrid.get(cellKey) !== value) {
+                            splatGrid.set(cellKey, value);
+                            gridChanged = true;
+                        }
+                    }
+                }
+            }
+            if (gridChanged) {
+                const centerX = isEditorMode ? cameraBase.position.x : playerGrp.position.x;
+                const centerZ = isEditorMode ? cameraBase.position.z : playerGrp.position.z;
+                updateTerrainGeometry(centerX, centerZ);
+            }
+        }
+    }
+
     const onPointerDown = (event) => {
         isDragging = true;
         previousPointerPos = { x: event.clientX, y: event.clientY };
+        
+        if (isEditorMode && brushMode !== 'rotate') {
+            paintTerrain(event.clientX, event.clientY);
+        }
     };
 
     const onPointerMove = (event) => {
         if (!isDragging) return;
+        
+        if (isEditorMode && brushMode !== 'rotate') {
+            paintTerrain(event.clientX, event.clientY);
+            return; // Skip camera rotation when painting
+        }
+        
         const deltaX = event.clientX - previousPointerPos.x;
         const deltaY = event.clientY - previousPointerPos.y;
 
-        // Orbit the pivot
         cameraPivot.rotation.y -= deltaX * 0.004;
         cameraPivot.rotation.x -= deltaY * 0.004;
         
-        // Clamp vertical look to prevent the camera from flipping upside down
-        cameraPivot.rotation.x = Math.max(-Math.PI / 4, Math.min(Math.PI / 6, cameraPivot.rotation.x));
+        const maxPitch = isEditorMode ? Math.PI / 2 - 0.01 : Math.PI / 6;
+        const minPitch = isEditorMode ? -Math.PI / 2 + 0.01 : -Math.PI / 4;
+        cameraPivot.rotation.x = Math.max(minPitch, Math.min(maxPitch, cameraPivot.rotation.x));
 
         previousPointerPos = { x: event.clientX, y: event.clientY };
     };
 
     const onPointerUp = () => isDragging = false;
 
-    // Target the render canvas wrapper to parse inputs properly
     const canvas = renderer.domElement;
     canvas.addEventListener('pointerdown', onPointerDown);
     canvas.addEventListener('pointermove', onPointerMove);
@@ -2984,74 +3018,94 @@ console.error = function(...args) {
         }
 
         let oldY = playerGrp.position.y;
-        const isBraking = keys.space || touchState.brake;
-        const isBoosting = keys.shift || touchState.boost;
 
-        const targetSpeed = isBraking ? 0.0 : (isBoosting ? 250.0 : 18.0); // Extreme super speed
-        velocity += (targetSpeed - velocity) * dt * (isBraking ? 3.0 : (isBoosting ? 1.5 : 1.0));
-        
-        const inputState = {
-            forward: true,
-            up: keys.w || keys.c || touchState.y < -0.1 || touchState.climb,
-            down: keys.s || touchState.y > 0.1,
-            left: keys.a || touchState.x < -0.1,
-            right: keys.d || touchState.x > 0.1
-        };
-        tickMovement(dt, inputState, playerGrp, velocity);
-
-        const groundY = terrainHeightJS(playerGrp.position.x, playerGrp.position.z);
-        playerGrp.position.y = Math.min(Math.max(playerGrp.position.y, 18), 3500);
-        
-        cameraBase.position.lerp(playerGrp.position, dt * 7.0); // Re-sync camera position
-        
-        // --- Camera Collision Prevention & Zoom ---
-        const idealCamPos = new THREE.Vector3();
-        camera.getWorldPosition(idealCamPos);
-        const playerPos = playerGrp.position.clone();
-        const dirToCam = new THREE.Vector3().subVectors(idealCamPos, playerPos);
-        const distToCam = dirToCam.length();
-        dirToCam.normalize();
-        
-        const defaultCamDist = cameraZoomDist;
-        const defaultCamHeight = cameraZoomDist * 0.33;
-        
-        // Smoothly lerp camera to default distance
-        camera.position.z = THREE.MathUtils.lerp(camera.position.z, defaultCamDist, dt * 5.0);
-        camera.position.y = THREE.MathUtils.lerp(camera.position.y, defaultCamHeight, dt * 5.0);
-        // -----------------------------------
-        
-        starField.position.copy(playerGrp.position); // Track player to create infinite distance illusion
-        const targetMinY = groundY + 55; // Keep above trees and terrain
-        if (playerGrp.position.y < targetMinY) {
-            const depth = targetMinY - playerGrp.position.y;
-            const swoopPitch = Math.min(Math.PI / 4, depth / 40.0);
-            currentPitch = THREE.MathUtils.lerp(currentPitch, swoopPitch, dt * 3.0);
-            playerGrp.rotation.set(currentPitch, currentYaw, 0, 'YXZ');
+        if (isEditorMode) {
+            velocity = 0;
             
-            if (playerGrp.position.y < groundY + 15) {
-                playerGrp.position.y += (groundY + 15 - playerGrp.position.y) * dt * 5.0;
+            const groundY = terrainHeightJS(cameraBase.position.x, cameraBase.position.z);
+            const altitude = Math.max(1, cameraBase.position.y - groundY);
+            const baseFlySpeed = 50.0;
+            const altitudeSpeedFactor = Math.max(1.0, altitude * 0.15);
+            const speed = baseFlySpeed * altitudeSpeedFactor * editorFlySpeedMultiplier;
+            const activeSpeed = speed * (keys.shift ? 4.0 : 1.0);
+            
+            const direction = new THREE.Vector3(0, 0, -1).applyQuaternion(cameraPivot.quaternion);
+            const right = new THREE.Vector3(1, 0, 0).applyQuaternion(cameraPivot.quaternion);
+            
+            if (keys.w) cameraBase.position.addScaledVector(direction, activeSpeed * dt);
+            if (keys.s) cameraBase.position.addScaledVector(direction, -activeSpeed * dt);
+            if (keys.a) cameraBase.position.addScaledVector(right, -activeSpeed * dt);
+            if (keys.d) cameraBase.position.addScaledVector(right, activeSpeed * dt);
+            if (keys.e) cameraBase.position.y += activeSpeed * dt;
+            if (keys.q) cameraBase.position.y -= activeSpeed * dt;
+            
+            if (playerMarker) {
+                playerMarker.position.copy(playerGrp.position);
             }
-        }
-        
-        playerGrp.position.y = Math.min(Math.max(playerGrp.position.y, 18), 3500);
-        cameraBase.position.lerp(playerGrp.position, dt * 7.0); // Re-sync camera position
+            starField.position.copy(cameraBase.position);
+        } else {
+            const isBraking = keys.space || touchState.brake;
+            const isBoosting = keys.shift || touchState.boost;
 
-        // Visual bank and yaw when turning to see her side
-        // const extraBank = (turnVelocity / maxTurnSpeed) * (Math.PI / 3); 
-        // playerVisuals.rotation.z = THREE.MathUtils.lerp(playerVisuals.rotation.z, extraBank, dt * 5.0);
-        
-        // const extraYaw = (turnVelocity / maxTurnSpeed) * (Math.PI / 6);
-        // playerVisuals.rotation.y = THREE.MathUtils.lerp(playerVisuals.rotation.y, extraYaw, dt * 5.0);
-        
-        // Remove extra pitch to prevent double-rotation
+            const targetSpeed = isBraking ? 0.0 : (isBoosting ? 250.0 : 18.0);
+            velocity += (targetSpeed - velocity) * dt * (isBraking ? 3.0 : (isBoosting ? 1.5 : 1.0));
+            
+            const inputState = {
+                forward: true,
+                up: keys.w || keys.c || touchState.y < -0.1 || touchState.climb,
+                down: keys.s || touchState.y > 0.1,
+                left: keys.a || touchState.x < -0.1,
+                right: keys.d || touchState.x > 0.1
+            };
+            tickMovement(dt, inputState, playerGrp, velocity);
+
+            const groundY = terrainHeightJS(playerGrp.position.x, playerGrp.position.z);
+            playerGrp.position.y = Math.min(Math.max(playerGrp.position.y, 18), 3500);
+            
+            cameraBase.position.lerp(playerGrp.position, dt * 7.0);
+            
+            const idealCamPos = new THREE.Vector3();
+            camera.getWorldPosition(idealCamPos);
+            const playerPos = playerGrp.position.clone();
+            const dirToCam = new THREE.Vector3().subVectors(idealCamPos, playerPos);
+            const distToCam = dirToCam.length();
+            dirToCam.normalize();
+            
+            const defaultCamDist = cameraZoomDist;
+            const defaultCamHeight = cameraZoomDist * 0.33;
+            
+            camera.position.z = THREE.MathUtils.lerp(camera.position.z, defaultCamDist, dt * 5.0);
+            camera.position.y = THREE.MathUtils.lerp(camera.position.y, defaultCamHeight, dt * 5.0);
+            
+            starField.position.copy(playerGrp.position);
+            const targetMinY = groundY + 55;
+            if (playerGrp.position.y < targetMinY) {
+                const depth = targetMinY - playerGrp.position.y;
+                const swoopPitch = Math.min(Math.PI / 4, depth / 40.0);
+                currentPitch = THREE.MathUtils.lerp(currentPitch, swoopPitch, dt * 3.0);
+                playerGrp.rotation.set(currentPitch, currentYaw, 0, 'YXZ');
+                
+                if (playerGrp.position.y < groundY + 15) {
+                    playerGrp.position.y += (groundY + 15 - playerGrp.position.y) * dt * 5.0;
+                }
+            }
+            
+            playerGrp.position.y = Math.min(Math.max(playerGrp.position.y, 18), 3500);
+            cameraBase.position.lerp(playerGrp.position, dt * 7.0);
+        }
+
         playerVisuals.rotation.x = THREE.MathUtils.lerp(playerVisuals.rotation.x, 0, dt * 5.0);
 
-        updateTerrainGeometry(playerGrp.position.x, playerGrp.position.z);
-        waterMesh.position.x = playerGrp.position.x;
-        waterMesh.position.z = playerGrp.position.z;
+        const centerX = isEditorMode ? cameraBase.position.x : playerGrp.position.x;
+        const centerY = isEditorMode ? cameraBase.position.y : playerGrp.position.y;
+        const centerZ = isEditorMode ? cameraBase.position.z : playerGrp.position.z;
+
+        updateTerrainGeometry(centerX, centerZ);
+        waterMesh.position.x = centerX;
+        waterMesh.position.z = centerZ;
         
-        atmosphereRing.position.x = playerGrp.position.x;
-        atmosphereRing.position.z = playerGrp.position.z;
+        atmosphereRing.position.x = centerX;
+        atmosphereRing.position.z = centerZ;
         atmosphereRing.position.y = -25; // Locked exactly at the horizon where the terrain curves down
         // Softly match scene fog color, but slightly brighter
         atmosphereRing.material.uniforms.glowColor.value.copy(scene.fog.color).lerp(new THREE.Color(0xffffff), 0.2);
@@ -3072,21 +3126,21 @@ console.error = function(...args) {
 
         // Keep the physical sun and flare exactly 20,000 units away along the Z axis from Kiki so she can never reach it
         currentSunY += (target.sunY - currentSunY) * dt * 2.0;
-        staticSun.position.set(playerGrp.position.x, playerGrp.position.y * 0.45 + currentSunY, playerGrp.position.z - 20000);
+        staticSun.position.set(centerX, centerY * 0.45 + currentSunY, centerZ - 20000);
 
         // Place the sun incredibly far away and low on the horizon for a permanent sunset glare effect!
-        const toSun = staticSun.position.clone().sub(playerGrp.position).normalize();
-        dirLight.position.copy(playerGrp.position).add(toSun.multiplyScalar(2000));
-        dirLight.target.position.copy(playerGrp.position);
+        const toSun = staticSun.position.clone().sub(centerPos).normalize();
+        dirLight.position.copy(centerPos).add(toSun.multiplyScalar(2000));
+        dirLight.target.position.copy(centerPos);
         dirLight.target.updateMatrixWorld();
         
         // Dynamically scale up the terrain and water as Kiki flies high
-        const terrainScale = 1.0 + Math.min(1.0, Math.max(0.0, (playerGrp.position.y - 300.0) / 11700.0)) * 9.0;
+        const terrainScale = 1.0 + Math.min(1.0, Math.max(0.0, (centerY - 300.0) / 11700.0)) * 9.0;
         waterMesh.scale.set(terrainScale, 1.0, terrainScale);
 
         // Scale render distance (fog far) to reveal landscape when high
-        const dynamicFar = 1100 + Math.max(0, playerGrp.position.y - 300.0) * 2.2;
-        const dynamicNear = 10 + Math.max(0, playerGrp.position.y - 300.0) * 0.4;
+        const dynamicFar = 1100 + Math.max(0, centerY - 300.0) * 2.2;
+        const dynamicNear = 10 + Math.max(0, centerY - 300.0) * 0.4;
         
         scene.fog.far += (dynamicFar - scene.fog.far) * dt * 2.0;
         scene.fog.near += (dynamicNear - scene.fog.near) * dt * 2.0;
@@ -3236,110 +3290,51 @@ console.error = function(...args) {
         });
     }
 
-    // Atmosphere Studio UI Controller
-    function updateAtmoUI() {
-        const modal = document.getElementById('atmo-modal');
-        if (!modal || modal.style.display === 'none') return;
-
-        document.querySelectorAll('.atmo-tab-btn').forEach((btn, idx) => {
-            if (idx === timePhase) {
-                btn.style.background = '#2563eb';
-                btn.style.color = '#fff';
-            } else {
-                btn.style.background = '#334155';
-                btn.style.color = '#cbd5e1';
+    // Toggle Editor Mode
+    function toggleEditorMode() {
+        isEditorMode = !isEditorMode;
+        
+        if (isEditorMode) {
+            camera.position.set(0, 0, 0);
+            cameraBase.position.copy(playerGrp.position);
+            editorFlySpeedMultiplier = 1.0;
+            
+            if (playerMarker) {
+                playerMarker.position.copy(playerGrp.position);
+                playerMarker.visible = true;
             }
-        });
-
-        const cfg = envConfigs[timePhase];
-        if (!cfg) return;
-
-        const toHexStr = (num) => '#' + num.toString(16).padStart(6, '0');
-        document.getElementById('atmo-bg-col').value = toHexStr(cfg.bg);
-        document.getElementById('atmo-fog-col').value = toHexStr(cfg.fog);
-        document.getElementById('atmo-dir-col').value = toHexStr(cfg.dir);
-        document.getElementById('atmo-amb-col').value = toHexStr(cfg.amb);
-
-        document.getElementById('atmo-dirI').value = cfg.dirI;
-        document.getElementById('val-dirI').innerText = cfg.dirI.toFixed(1);
-        document.getElementById('atmo-ambI').value = cfg.ambI;
-        document.getElementById('val-ambI').innerText = cfg.ambI.toFixed(1);
-        document.getElementById('atmo-exp').value = cfg.exposure || 0.9;
-        document.getElementById('val-exp').innerText = (cfg.exposure || 0.9).toFixed(2);
-
-        if (cfg.post) {
-            document.getElementById('atmo-warm-col').value = toHexStr(cfg.post.warmGold);
-            document.getElementById('atmo-cool-col').value = toHexStr(cfg.post.azureShadow);
-            document.getElementById('atmo-sat').value = cfg.post.sat;
-            document.getElementById('val-sat').innerText = cfg.post.sat.toFixed(2);
-            document.getElementById('atmo-bloom').value = cfg.post.bloom;
-            document.getElementById('val-bloom').innerText = cfg.post.bloom.toFixed(2);
-            document.getElementById('atmo-vign').value = cfg.post.vign;
-            document.getElementById('val-vign').innerText = cfg.post.vign.toFixed(2);
+            velocity = 0;
+        } else {
+            camera.position.set(0, 4, 12);
+            if (playerMarker) playerMarker.visible = false;
+        }
+        
+        if (editorUI) {
+            editorUI.updateEditorUI(isEditorMode);
         }
     }
-    window.updateAtmoUI = updateAtmoUI;
 
-    document.getElementById('atmo-toggle')?.addEventListener('click', () => {
-        const modal = document.getElementById('atmo-modal');
-        if (modal) {
-            modal.style.display = modal.style.display === 'none' ? 'block' : 'none';
-            if (modal.style.display === 'block') updateAtmoUI();
-        }
-    });
-
-    document.getElementById('close-atmo-btn')?.addEventListener('click', () => {
-        const modal = document.getElementById('atmo-modal');
-        if (modal) modal.style.display = 'none';
-    });
-    document.getElementById('atmo-done-btn')?.addEventListener('click', () => {
-        const modal = document.getElementById('atmo-modal');
-        if (modal) modal.style.display = 'none';
-    });
-
-    document.querySelectorAll('.atmo-tab-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            timePhase = parseInt(btn.getAttribute('data-phase'));
-            if (timePhase === 0) timeToggleBtn.innerText = 'Switch to Dusk';
-            else if (timePhase === 1) timeToggleBtn.innerText = 'Switch to Twilight';
-            else timeToggleBtn.innerText = 'Switch to Day';
-            updateAtmoUI();
-        });
-    });
-
-    // Handle instant live feedback inputs
-    const atmoInputs = ['atmo-bg-col', 'atmo-fog-col', 'atmo-dir-col', 'atmo-amb-col', 'atmo-dirI', 'atmo-ambI', 'atmo-exp', 'atmo-warm-col', 'atmo-cool-col', 'atmo-sat', 'atmo-bloom', 'atmo-vign'];
-    atmoInputs.forEach(id => {
-        const el = document.getElementById(id);
-        if (!el) return;
-        el.addEventListener('input', () => {
-            const cfg = envConfigs[timePhase];
-            if (!cfg) return;
-
-            if (id === 'atmo-bg-col') cfg.bg = parseInt(el.value.replace('#', ''), 16);
-            if (id === 'atmo-fog-col') cfg.fog = parseInt(el.value.replace('#', ''), 16);
-            if (id === 'atmo-dir-col') cfg.dir = parseInt(el.value.replace('#', ''), 16);
-            if (id === 'atmo-amb-col') cfg.amb = parseInt(el.value.replace('#', ''), 16);
-
-            if (id === 'atmo-dirI') { cfg.dirI = parseFloat(el.value); document.getElementById('val-dirI').innerText = cfg.dirI.toFixed(1); }
-            if (id === 'atmo-ambI') { cfg.ambI = parseFloat(el.value); document.getElementById('val-ambI').innerText = cfg.ambI.toFixed(1); }
-            if (id === 'atmo-exp') { cfg.exposure = parseFloat(el.value); document.getElementById('val-exp').innerText = cfg.exposure.toFixed(2); }
-
-            if (cfg.post) {
-                if (id === 'atmo-warm-col') cfg.post.warmGold = parseInt(el.value.replace('#', ''), 16);
-                if (id === 'atmo-cool-col') cfg.post.azureShadow = parseInt(el.value.replace('#', ''), 16);
-                if (id === 'atmo-sat') { cfg.post.sat = parseFloat(el.value); document.getElementById('val-sat').innerText = cfg.post.sat.toFixed(2); }
-                if (id === 'atmo-bloom') { cfg.post.bloom = parseFloat(el.value); document.getElementById('val-bloom').innerText = cfg.post.bloom.toFixed(2); }
-                if (id === 'atmo-vign') { cfg.post.vign = parseFloat(el.value); document.getElementById('val-vign').innerText = cfg.post.vign.toFixed(2); }
-            }
-        });
-    });
-
-    document.getElementById('atmo-reset-btn')?.addEventListener('click', () => {
-        for (let i = 0; i < defaultEnvConfigs.length; i++) {
-            envConfigs[i] = JSON.parse(JSON.stringify(defaultEnvConfigs[i]));
-        }
-        updateAtmoUI();
+    // Initialize Editor UI Panel
+    editorUI = initEditor({
+        scene: scene,
+        dirLight: dirLight,
+        ambientLight: ambientLight,
+        waterUniforms: waterUniforms,
+        bloomPass: bloomPass,
+        toggleEditorMode: toggleEditorMode,
+        getEditorMode: () => isEditorMode,
+        getBrushMode: () => brushMode,
+        setBrushMode: (mode) => { brushMode = mode; },
+        getBrushSize: () => brushSize,
+        setBrushSize: (size) => { brushSize = size; },
+        clearSplatGrid: () => {
+            splatGrid.clear();
+            const centerX = isEditorMode ? cameraBase.position.x : playerGrp.position.x;
+            const centerZ = isEditorMode ? cameraBase.position.z : playerGrp.position.z;
+            updateTerrainGeometry(centerX, centerZ);
+        },
+        getFlySpeedMultiplier: () => editorFlySpeedMultiplier,
+        setFlySpeedMultiplier: (mult) => { editorFlySpeedMultiplier = mult; }
     });
 
 
